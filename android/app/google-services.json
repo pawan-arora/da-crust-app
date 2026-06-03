@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "128457479265",
+    "project_id": "da-crust-prod",
+    "storage_bucket": "da-crust-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:128457479265:android:c4403157cc311e7dad4620",
+        "android_client_info": {
+          "package_name": "com.example.da_crust_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApmaru2B7vjdGdeYs1tzuMDZ-sQYpmLB4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
