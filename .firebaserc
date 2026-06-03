@@ -1,5 +1,5 @@
 {
   "projects": {
-    "default": "da-crust-dev"
+    "default": "da-crust-prod"
   }
 }
