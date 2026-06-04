@@ -19,7 +19,6 @@ class _RestaurantFooterState extends State<RestaurantFooter> {
     _loadFooterData();
   }
 
-  // --- 🌟 FETCH DATA ONCE VIA SERVICE ---
   Future<void> _loadFooterData() async {
     final data = await RestaurantService.instance.fetchRestaurantData();
     if (mounted) {
@@ -65,7 +64,6 @@ class _RestaurantFooterState extends State<RestaurantFooter> {
 
   @override
   Widget build(BuildContext context) {
-    // --- 🌟 HANDLE LOADING STATE ---
     if (_isLoading) {
       return Container(
         width: double.infinity,
@@ -75,12 +73,10 @@ class _RestaurantFooterState extends State<RestaurantFooter> {
       );
     }
 
-    // --- 🌟 HANDLE EMPTY/ERROR STATE ---
     if (_restaurantData == null) {
       return const SizedBox.shrink(); 
     }
 
-    // --- 🌟 EXTRACT DATA ---
     final name = _restaurantData!['name'] ?? "Da Crust Pizzeria & Indian Takeaways";
     final fbUrl = _restaurantData!['facebookUrl'] ?? "";
     
@@ -105,7 +101,6 @@ class _RestaurantFooterState extends State<RestaurantFooter> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- BRANDING & SOCIAL ---
           Text(
             name,
             style: const TextStyle(
@@ -134,7 +129,6 @@ class _RestaurantFooterState extends State<RestaurantFooter> {
           
           const SizedBox(height: 24),
           
-          // --- COMPACT INFO SECTION ---
           _buildCompactRow(context, Icons.location_on, "$street, $city"),
           const SizedBox(height: 12),
           
@@ -148,20 +142,28 @@ class _RestaurantFooterState extends State<RestaurantFooter> {
     );
   }
 
-  // --- HELPER FOR COMPACT ROWS ---
+  // --- 🌟 THE FIX IS HERE ---
   Widget _buildCompactRow(BuildContext context, IconData icon, String text) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
+      // 🌟 1. Changed to 'start' so the icon stays at the top if text wraps to two lines
+      crossAxisAlignment: CrossAxisAlignment.start, 
       children: [
-        Icon(icon, size: 20, color: Theme.of(context).primaryColor),
+        // 🌟 2. Added a tiny top padding to perfectly align the icon with the text baseline
+        Padding(
+          padding: const EdgeInsets.only(top: 2.0),
+          child: Icon(icon, size: 20, color: Theme.of(context).primaryColor),
+        ),
         const SizedBox(width: 12),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 15,
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
+        // 🌟 3. Wrapped Text in Expanded! This forces the text to wrap instead of overflowing.
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Colors.black87,
+              fontWeight: FontWeight.w500,
+              height: 1.4, // 🌟 4. Added line height so wrapped text breathes nicely
+            ),
           ),
         ),
       ],

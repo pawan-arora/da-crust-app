@@ -49,7 +49,6 @@ class _HomeContentState extends State<HomeContent> {
     });
   }
 
-  // 🌟 Keeps the dialog functionality, but removes the confetti trigger
   void _openReviewDialog() async {
     await showDialog<bool>(
       context: context,
@@ -59,7 +58,13 @@ class _HomeContentState extends State<HomeContent> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 750;
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    // 🌟 THE FIX: We abandon percentage math for the bounding boxes.
+    // The wrapping content needs a guaranteed absolute height to never clip!
+    final safeToolbarHeight = isMobile ? 135.0 : 105.0;
+    final safeBottomHeight = isMobile ? 175.0 : 135.0;
+    final horizontalPadding = isMobile ? 16.0 : 24.0;
 
     final categories = ["All", ...widget.grouped.keys];
 
@@ -75,18 +80,14 @@ class _HomeContentState extends State<HomeContent> {
 
     if (searchQuery.isNotEmpty) {
       gridItems = gridItems
-          .where(
-            (item) =>
-                item.name.toLowerCase().contains(searchQuery.toLowerCase()),
-          )
+          .where((item) =>
+              item.name.toLowerCase().contains(searchQuery.toLowerCase()))
           .toList();
 
       for (var entry in widget.grouped.entries) {
         final matches = entry.value
-            .where(
-              (item) =>
-                  item.name.toLowerCase().contains(searchQuery.toLowerCase()),
-            )
+            .where((item) =>
+                item.name.toLowerCase().contains(searchQuery.toLowerCase()))
             .toList();
         if (matches.isNotEmpty) {
           filteredGrouped[entry.key] = matches;
@@ -116,29 +117,32 @@ class _HomeContentState extends State<HomeContent> {
       }
     }
 
-    // 🌟 Restored to directly return the CustomScrollView (No Stack)
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
         SliverAppBar(
           floating: true,
           snap: true,
-          // 👇 1. Reduce height and spacing on mobile
-          toolbarHeight: isMobile ? 75 : 90,
-          titleSpacing: isMobile ? 16 : 24,
+          // 👇 Using the guaranteed safe height
+          toolbarHeight: safeToolbarHeight,
+          titleSpacing: isMobile ? 12 : 24,
           automaticallyImplyLeading: false,
           title: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
                   onTap: _resetToHome,
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    // 👇 2. Shrink the logo on small screens
-                    height: isMobile ? 45 : 70,
-                    width: isMobile ? 45 : 70,
-                    fit: BoxFit.contain,
+                  child: Padding(
+                    // 👇 Give the logo a tiny push down so it aligns with the title
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      height: isMobile ? 45 : 70,
+                      width: isMobile ? 45 : 70,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
@@ -149,7 +153,7 @@ class _HomeContentState extends State<HomeContent> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Flexible(
                           child: MouseRegion(
@@ -164,34 +168,39 @@ class _HomeContentState extends State<HomeContent> {
                               },
                               child: Text(
                                 "Da Crust Pizzeria & Indian Takeaways",
-                                // 👇 3. Shrink text slightly on mobile
                                 style: TextStyle(
-                                  fontSize: isMobile ? 18 : 22,
+                                  fontSize: isMobile ? 16 : 22,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
-                                  letterSpacing: 1.0,
+                                  letterSpacing: 0.0,
+                                  height: 1.1,
                                 ),
-                                maxLines: 1,
+                                maxLines: isMobile ? 2 : 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        if (!isMobile)
-                          const RatingBadge(), // Hide badge on super small screens to save space
+                        if (!isMobile) ...[
+                          const SizedBox(width: 12),
+                          const RatingBadge(),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Row(
+                    SizedBox(height: isMobile ? 8 : 6),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8, // Tighter horizontal gap
+                      runSpacing: 4, // Tighter vertical gap to prevent pushing the bounds
                       children: [
                         const RestaurantStatusWidget(),
-                        const SizedBox(width: 12),
+                        if (isMobile) const RatingBadge(),
                         MouseRegion(
                           cursor: SystemMouseCursors.click,
                           child: GestureDetector(
                             onTap: _openReviewDialog,
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Icon(
                                   Icons.chat_bubble_outline,
@@ -200,9 +209,7 @@ class _HomeContentState extends State<HomeContent> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  isMobile
-                                      ? "Reviews"
-                                      : "Leave Feedback", // Shorter text on mobile
+                                  isMobile ? "Reviews" : "Leave Feedback",
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
@@ -227,16 +234,41 @@ class _HomeContentState extends State<HomeContent> {
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    if (isMobile) {
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text(
+                            "Welcome, Guest!",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          backgroundColor: Colors.black87,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          margin: const EdgeInsets.only(
+                            bottom: 20,
+                            left: 80,
+                            right: 80,
+                          ),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
                   child: Container(
                     padding: EdgeInsets.symmetric(
                       horizontal: isMobile ? 10 : 14,
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(
-                        alpha: 0.12,
-                      ), // Using modern withValues!
+                      color: Colors.white.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.2),
@@ -251,7 +283,6 @@ class _HomeContentState extends State<HomeContent> {
                           color: Colors.white,
                           size: 18,
                         ),
-                        // 👇 4. Hide the "Welcome, Guest" text on mobile, just keep the icon!
                         if (!isMobile) ...[
                           const SizedBox(width: 8),
                           const Text(
@@ -271,7 +302,7 @@ class _HomeContentState extends State<HomeContent> {
             ),
             SizedBox(width: isMobile ? 8 : 12),
             Padding(
-              padding: EdgeInsets.only(right: isMobile ? 16.0 : 24.0),
+              padding: EdgeInsets.only(right: horizontalPadding),
               child: const CartIconWithBadge(),
             ),
           ],
@@ -290,17 +321,20 @@ class _HomeContentState extends State<HomeContent> {
             ),
           ),
           bottom: PreferredSize(
-            preferredSize: Size.fromHeight(isMobile ? 190 : 135),
+            // 👇 Using the guaranteed safe height for the bottom search area
+            preferredSize: Size.fromHeight(safeBottomHeight),
             child: Container(
               color: Theme.of(context).scaffoldBackgroundColor,
               width: double.infinity,
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                     child: isMobile
                         ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              const SizedBox(height: 5),
                               ListenableBuilder(
                                 listenable: CartManager.instance,
                                 builder: (context, _) {
@@ -308,14 +342,13 @@ class _HomeContentState extends State<HomeContent> {
                                     scheduledTime:
                                         CartManager.instance.scheduledTime,
                                     onTimeChanged: (newTime) {
-                                      CartManager.instance.updateScheduledTime(
-                                        newTime,
-                                      );
+                                      CartManager.instance
+                                          .updateScheduledTime(newTime);
                                     },
                                   );
                                 },
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 8),
                               CustomSearchBar(
                                 onChanged: (val) {
                                   setState(() {
@@ -386,20 +419,30 @@ class _HomeContentState extends State<HomeContent> {
                 BestsellersSection(items: popularItems),
               if (selectedCategory != "All")
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
+                  // 👇 Also applying the dynamic padding here for perfect alignment
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
                     vertical: 8.0,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        "Showing ${gridItems.length} Products",
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        // 🌟 FIX 4: Wrapped in FittedBox to dynamically shrink text instead of clipping!
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "Showing ${gridItems.length} Products",
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w600,
+                              fontSize: isMobile ? 14 : 16,
+                            ),
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         height: 36,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -419,19 +462,22 @@ class _HomeContentState extends State<HomeContent> {
                               color: Colors.black87,
                               fontSize: 13,
                             ),
-                            items:
-                                [
-                                      'Relevance',
-                                      'Price: Low to High',
-                                      'Price: High to Low',
-                                    ]
-                                    .map(
-                                      (s) => DropdownMenuItem(
-                                        value: s,
-                                        child: Text("Sort By: $s"),
-                                      ),
-                                    )
-                                    .toList(),
+                            items: [
+                              'Relevance',
+                              'Price: Low to High',
+                              'Price: High to Low',
+                            ]
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(
+                                      isMobile
+                                          ? s.replaceFirst('Price: ', '')
+                                          : "Sort By: $s",
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                             onChanged: (val) {
                               if (val != null) {
                                 setState(() => currentSort = val);
