@@ -66,3 +66,4 @@ firebase-debug.*.log
 
 # Windows specific
 Thumbs.db
+assets/config.env
