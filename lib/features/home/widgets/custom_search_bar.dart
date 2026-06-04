@@ -7,8 +7,12 @@ class CustomSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 🌟 Determine if we are on mobile to dynamically adjust constraints
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      // 👇 FIX 1: Remove the hardcoded left/right padding on mobile to prevent double-padding
+      padding: EdgeInsets.fromLTRB(isMobile ? 0 : 20, isMobile ? 0 : 16, isMobile ? 0 : 20, 8),
       child: Row(
         children: [
           // --- 1. THE SEARCH BAR ---
@@ -17,30 +21,28 @@ class CustomSearchBar extends StatelessWidget {
               height: 42, 
               child: TextField(
                 onChanged: onChanged, 
-                // Adds a maximum limit of 50 characters
                 maxLength: 50, 
-                decoration: const InputDecoration(
-                  hintText: "I'm looking for...",
-                  prefixIcon: Icon(Icons.search, color: Colors.grey, size: 20),
-                  
-                  // Hides the "0/50" counter text so it doesn't break your 42px height!
+                decoration: InputDecoration(
+                  // 👇 FIX 2: Slightly shorter hint text on mobile
+                  hintText: isMobile ? "Search..." : "I'm looking for...",
+                  hintStyle: TextStyle(
+                    fontSize: isMobile ? 14 : 16,
+                  ),
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
                   counterText: "", 
-                  
-                  // 🌟 NOTICE: All hardcoded borders and colors are GONE!
-                  // It now automatically inherits everything from your AppTheme.
                 ),
               ),
             ),
           ),
           
-          const SizedBox(width: 20), 
+          // 👇 FIX 3: Shrink the huge 20px gap down to 10px on mobile
+          SizedBox(width: isMobile ? 10 : 20), 
           
           // --- 2. PICK UP ONLY BADGE ---
           Container(
             height: 42, 
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 14),
             decoration: BoxDecoration(
-              // Uses withAlpha (0-255 scale) instead of the deprecated withOpacity
               color: Theme.of(context).colorScheme.secondary.withAlpha(20),
               borderRadius: BorderRadius.circular(30), 
               border: Border.all(color: Theme.of(context).colorScheme.secondary.withAlpha(51)),
@@ -50,15 +52,16 @@ class CustomSearchBar extends StatelessWidget {
               children: [
                 Icon(
                   Icons.shopping_bag_outlined, 
-                  size: 16, 
+                  size: isMobile ? 14 : 16, 
                   color: Theme.of(context).colorScheme.secondary,
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: isMobile ? 4 : 6),
                 Text(
-                  "Pick Up Only",
+                  // 👇 FIX 4: Use a punchier text on small screens to save horizontal space
+                  isMobile ? "Pick Up" : "Pick Up Only",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 12, 
+                    fontSize: isMobile ? 12 : 12, 
                     color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
