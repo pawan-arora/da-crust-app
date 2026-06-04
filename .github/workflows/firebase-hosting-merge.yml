@@ -17,10 +17,14 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          
       - name: Create config file
         run: |
           mkdir -p assets
           echo "${{ secrets.ENV_FILE }}" > assets/config.env
+          
+      # 🚨 THE MISSING STEP: You must build the web app before Firebase can upload it!
+      - run: flutter pub get && flutter build web --dart-define=ENV=prod
       
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
