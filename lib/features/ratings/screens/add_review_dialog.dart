@@ -31,20 +31,45 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
   int _selectedRating = 0; 
   bool _isSubmitting = false;
 
-  @override
+ @override
   void initState() {
     super.initState();
+    
+    // 🔍 1. Verify the environment file is loaded
+    debugPrint("=== RECAPTCHA INIT START ===");
+    debugPrint("DotEnv initialized: ${dotenv.isInitialized}");
+    debugPrint("Available DotEnv keys: ${dotenv.env.keys.toList()}");
+
+    // 🔍 2. Verify the exact value of the key
     final siteKey = dotenv.env['RECAPTCHA_SITE_KEY'] ?? '';
+    debugPrint("Loaded Site Key: '$siteKey' (Length: ${siteKey.length})");
+
     final String containerId = 'recaptcha-container-${DateTime.now().millisecondsSinceEpoch}';
+    debugPrint("Generated Container ID: $containerId");
     
     ui_web.platformViewRegistry.registerViewFactory('recaptcha-view', (int viewId) {
+      debugPrint("Registering View Factory for viewId: $viewId");
+      
       final element = web.HTMLDivElement()
         ..id = containerId; 
       
-      forceRenderCaptcha(containerId.toJS, siteKey.toJS);
+      // 🌟 Use the 100ms delay so the HTMLDivElement actually attaches to the screen
+      Future.delayed(const Duration(milliseconds: 100), () {
+        debugPrint("Calling JS forceRenderCaptcha with ID: $containerId");
+        
+        if (siteKey.isEmpty) {
+          debugPrint("🚨 CRITICAL ERROR: siteKey is completely empty right before JS call!");
+        } else {
+          debugPrint("✅ Executing JS interop...");
+        }
+        
+        forceRenderCaptcha(containerId.toJS, siteKey.toJS);
+      });
       
       return element;
     });
+    
+    debugPrint("=== RECAPTCHA INIT END ===");
   }
 
   @override

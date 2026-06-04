@@ -17,10 +17,10 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      - name: Create .env file
-        run: echo "${{ secrets.ENV_FILE }}" > .env
-            
-      - run: flutter pub get && flutter build web --dart-define=ENV=prod
+      - name: Create config file
+        run: |
+          mkdir -p assets
+          echo "${{ secrets.ENV_FILE }}" > assets/config.env
       
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

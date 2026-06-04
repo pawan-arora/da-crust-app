@@ -13,9 +13,10 @@ import 'firebase_options_prod.dart' as prod;
 
 void main() async {
   tz.initializeTimeZones();
-  // Ensure the Flutter engine is ready before making network calls
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+
+  // 🌟 THE FIX: Point to the renamed file inside the assets folder
+  await dotenv.load(fileName: "assets/config.env");
 
   // 🌟 2. Read the environment flag (Defaults to 'dev' to protect production)
   const environment = String.fromEnvironment('ENV', defaultValue: 'dev');
@@ -30,8 +31,6 @@ void main() async {
 
   // Fetch the Store Settings from Firestore
   await AppConfig.instance.init();
-
-  // Notice: No Stripe initialization needed here anymore!
 
   // Run the App
   runApp(const MyApp());

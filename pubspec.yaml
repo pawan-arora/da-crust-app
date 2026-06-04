@@ -72,7 +72,7 @@ flutter:
   assets:
     - assets/images/
     - assets/gif/
-    - .env
+    - assets/config.env
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
