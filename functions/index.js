@@ -18,6 +18,13 @@ if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
 // =========================================================================
 exports.createCheckoutSession = functions.region("australia-southeast1").https.onCall(async (data, context) => {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
+  
+  // 🌟 SAFEGUARD: Check if the .env file actually loaded the key!
+  if (!stripeKey) {
+    console.error("CRITICAL ERROR: STRIPE_SECRET_KEY is undefined! The .env file did not load correctly in production.");
+    throw new functions.https.HttpsError("internal", "Server configuration error.");
+  }
+
   const stripe = require("stripe")(stripeKey);
 
   try {
@@ -34,19 +41,18 @@ exports.createCheckoutSession = functions.region("australia-southeast1").https.o
     };
     const DOMAIN = environments[currentEnv] || "https://dacrust.co.nz";
 
-    // 🌟 THE FIX: Isolate the payment methods entirely
     let stripeMethods;
     if (paymentMethod === "afterpay") {
-      stripeMethods = ["afterpay_clearpay"]; // Forces Stripe to drop the card form and show Afterpay rails
+      stripeMethods = ["afterpay_clearpay"]; 
     } else {
-      stripeMethods = ["card"]; // Keeps standard card flow isolated
+      stripeMethods = ["card"]; 
     }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: stripeMethods,
       line_items: [{
         price_data: {
-          currency: "nzd", // Kept native to prevent conversion conflicts
+          currency: "nzd",
           product_data: { name: `Da Crust Order #${orderId}` },
           unit_amount: finalAmountInCents,
         },
@@ -60,7 +66,11 @@ exports.createCheckoutSession = functions.region("australia-southeast1").https.o
 
     return { url: session.url };
   } catch (error) {
-    throw new functions.https.HttpsError("internal", error.message);
+    // 🌟 THE FIX: Actually log the error to the Firebase Console so we can read it!
+    console.error("🔥 STRIPE CHECKOUT FAILED:", error.message);
+    console.error("Full Error Details:", error);
+    
+    throw new functions.https.HttpsError("internal", "Payment session failed to create.");
   }
 });
 

@@ -41,7 +41,7 @@ class PaymentHandler {
           'amount': amount,
           'orderId': orderId,
           'scheduledTimeEpoch': scheduledTimeMs, 
-          'paymentMethod': paymentMethodName, // 🌟 FIX: Send it to Firebase so it triggers the Afterpay UI!
+          'paymentMethod': paymentMethodName, 
         });
 
     final String checkoutUrl = result.data['url'] as String;
