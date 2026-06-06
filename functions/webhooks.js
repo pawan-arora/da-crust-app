@@ -38,33 +38,56 @@ exports.stripeWebhook = functions.region("australia-southeast1").https.onRequest
 // =========================================================================
 exports.worldlineWebhook = functions.region("australia-southeast1").https.onRequest(async (req, res) => {
   try {
-    // 1. Extract the raw JWT string
-    let rawBody = req.body;
-    let jwtString = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
-    jwtString = jwtString.replace(/^"|"$/g, ''); // Strip quotes if they exist
+    console.log("PAYMARK WEBHOOK RAW BODY:", JSON.stringify(req.body));
 
-    if (!jwtString.includes('.')) {
-      return res.status(400).send("Payload is not a valid JWT");
+    let status;
+    let transactionId;
+
+    const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+    const cleaned = rawBody.replace(/^"|"$/g, "");
+
+    if (cleaned.includes(".")) {
+      // JWT format
+      try {
+        const base64Payload = cleaned.split(".")[1];
+        const decoded       = Buffer.from(base64Payload, "base64").toString("utf8");
+        const tokenData     = JSON.parse(decoded);
+
+        const paymentData = typeof tokenData.payment === "string"
+          ? JSON.parse(tokenData.payment)
+          : tokenData.payment;
+
+        status        = paymentData?.status;
+        // ✅ merchantTransactionId is guaranteed in every Paymark response
+        transactionId = paymentData?.merchantTransactionId;
+
+        console.log("Decoded JWT — status:", status, "transactionId:", transactionId);
+      } catch (jwtErr) {
+        console.error("JWT decode failed:", jwtErr.message);
+        return res.status(400).send("Invalid JWT payload");
+      }
+    } else {
+      // Plain JSON fallback
+      status        = req.body?.status;
+      transactionId = req.body?.merchantTransactionId;
     }
 
-    // 2. Split the JWT and decode the Payload (middle section)
-    const base64Payload = jwtString.split('.')[1];
-    const decodedPayload = Buffer.from(base64Payload, 'base64').toString('utf8');
-    const tokenData = JSON.parse(decodedPayload);
+    if (status === "AUTHORISED" && transactionId) {
+      // ✅ Look up the real orderId from reverse lookup collection
+      const txDoc = await admin.firestore()
+        .collection("paymark_transactions")
+        .doc(transactionId)
+        .get();
 
-    // 3. Paymark heavily stringifies the inner 'payment' object, parse it again
-    const paymentData = JSON.parse(tokenData.payment);
-    
-    // 4. Extract exactly what we need
-    const status = paymentData.status; 
-    const orderId = paymentData.oepayment.reference; 
-
-    // 5. Fire the success process
-    if (status === "AUTHORISED" && orderId) {
-      console.log(`Successfully processed Paymark order: ${orderId}`);
-      await processSuccessfulOrder(orderId, "Paymark_OnlineEFTPOS");
+      if (txDoc.exists) {
+        const { orderId } = txDoc.data();
+        console.log(`Processing Paymark order: ${orderId}`);
+        await processSuccessfulOrder(orderId, "Paymark_OnlineEFTPOS");
+      } else {
+        console.warn("No paymark_transactions doc found for:", transactionId);
+      }
     } else {
-      console.warn(`Webhook ignored. Status: ${status}, OrderID: ${orderId}`);
+      console.log(`Webhook ignored — status: ${status}, transactionId: ${transactionId}`);
     }
 
     return res.status(200).json({ received: true });

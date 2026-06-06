@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:da_crust_app/core/utils/string_utils.dart';
+import 'package:da_crust_app/core/widgets/splash_screen.dart';
 import 'package:da_crust_app/features/payments/mixins/auto_redirect_timer_mixin.dart';
 import 'package:da_crust_app/features/payments/state/order_repository.dart';
+import 'package:da_crust_app/features/payments/widgets/return_to_menu_button.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:confetti/confetti.dart';
@@ -18,7 +20,6 @@ class OrderSuccessScreen extends StatefulWidget {
   State<OrderSuccessScreen> createState() => _OrderSuccessScreenState();
 }
 
-// 🌟 Add "with AutoRedirectTimerMixin"
 class _OrderSuccessScreenState extends State<OrderSuccessScreen>
     with AutoRedirectTimerMixin {
   String? _fetchedTime;
@@ -36,6 +37,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   @override
   void initState() {
     super.initState();
+    hasAppInitialized = true;
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 3),
     );
@@ -281,36 +283,17 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                               ),
                             ),
                             const SizedBox(height: 48),
-
-                            SizedBox(
-                              width: double.infinity,
-                              height: 56,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: primaryColor,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  cancelAutoRedirectTimer(); // 🌟 Mixin method
-                                  Navigator.of(context).pushNamedAndRemoveUntil(
-                                    '/',
-                                    (route) => false,
-                                  );
-                                },
-                                // 🌟 Use `countdown` inherited from the Mixin
-                                child: Text(
-                                  'Return to Menu ($countdown)',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
+                            ReturnToMenuButton(
+                              countdown: countdown,
+                              primaryColor: primaryColor,
+                              onPressed: () {
+                                hasAppInitialized = true;
+                                cancelAutoRedirectTimer(); // 🌟 Mixin method
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                  '/',
+                                  (route) => false,
+                                );
+                              },
                             ),
                           ],
                         ),

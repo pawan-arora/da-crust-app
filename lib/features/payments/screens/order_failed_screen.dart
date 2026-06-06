@@ -1,4 +1,6 @@
+import 'package:da_crust_app/core/widgets/splash_screen.dart';
 import 'package:da_crust_app/features/payments/mixins/auto_redirect_timer_mixin.dart';
+import 'package:da_crust_app/features/payments/widgets/return_to_menu_button.dart';
 import 'package:flutter/material.dart';
 // 🌟 Import your new mixin
 
@@ -10,16 +12,17 @@ class OrderFailedScreen extends StatefulWidget {
 }
 
 // 🌟 Add "with AutoRedirectTimerMixin" here
-class _OrderFailedScreenState extends State<OrderFailedScreen> with AutoRedirectTimerMixin {
-  
+class _OrderFailedScreenState extends State<OrderFailedScreen>
+    with AutoRedirectTimerMixin {
   @override
   void initState() {
     super.initState();
-    
+    hasAppInitialized = true;
     // 🌟 Start the timer as soon as the screen loads
     startAutoRedirectTimer(
       maxSeconds: 15,
-      onTick: () => setState(() {}), // Refresh UI to update the countdown number
+      onTick: () =>
+          setState(() {}), // Refresh UI to update the countdown number
       onComplete: () {
         if (ModalRoute.of(context)?.isCurrent == true) {
           Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
@@ -38,14 +41,17 @@ class _OrderFailedScreenState extends State<OrderFailedScreen> with AutoRedirect
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        automaticallyImplyLeading: false, 
+        automaticallyImplyLeading: false,
       ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -56,7 +62,7 @@ class _OrderFailedScreenState extends State<OrderFailedScreen> with AutoRedirect
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.cancel_rounded, 
+                      Icons.cancel_rounded,
                       color: Colors.red.shade500,
                       size: 72,
                     ),
@@ -73,7 +79,7 @@ class _OrderFailedScreenState extends State<OrderFailedScreen> with AutoRedirect
                     ),
                   ),
                   const SizedBox(height: 12),
-                  
+
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
@@ -82,7 +88,9 @@ class _OrderFailedScreenState extends State<OrderFailedScreen> with AutoRedirect
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04), // Modern opacity syntax
+                          color: Colors.black.withValues(
+                            alpha: 0.04,
+                          ), // Modern opacity syntax
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                         ),
@@ -98,34 +106,18 @@ class _OrderFailedScreenState extends State<OrderFailedScreen> with AutoRedirect
                       ),
                     ),
                   ),
-                  
-                  const SizedBox(height: 48),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56, 
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12), 
-                        ),
-                      ),
-                      onPressed: () {
-                        cancelAutoRedirectTimer(); // Stop timer if user clicks manually
-                        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                      },
-                      child: Text(
-                        "Return to Menu ($countdown)", // 🌟 Read the countdown from the Mixin
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
+                  const SizedBox(height: 48),
+                  ReturnToMenuButton(
+                    countdown: countdown,
+                    primaryColor: primaryColor,
+                    onPressed: () {
+                      hasAppInitialized = true;
+                      cancelAutoRedirectTimer(); // Stop timer if user clicks manually
+                      Navigator.of(
+                        context,
+                      ).pushNamedAndRemoveUntil('/', (route) => false);
+                    },
                   ),
                 ],
               ),

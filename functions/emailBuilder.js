@@ -138,3 +138,51 @@ exports.buildReceiptHtml = (orderData, restaurantData = {}) => {
     </div>
   `;
 };
+
+
+// Add this below your existing buildReceiptHtml function
+exports.buildOwnerEmailHtml = (orderData) => {
+  let itemsHtml = "";
+  
+  if (orderData.items && Array.isArray(orderData.items)) {
+    orderData.items.forEach(item => {
+      let customizations = [];
+      if (item.selectedSize) customizations.push(`Size: ${item.selectedSize}`);
+      if (item.selectedSpice) customizations.push(`Spice: ${item.selectedSpice}`);
+      
+      let customText = customizations.length > 0 ? ` <span style="color: #ff5722;">(${customizations.join(' | ')})</span>` : "";
+      
+      itemsHtml += `<li style="margin-bottom: 8px; font-size: 16px;"><b>${item.quantity}x ${item.name}</b>${customText}</li>`;
+    });
+  }
+
+  let timeString = "ASAP";
+  if (orderData.scheduledTimeEpoch) {
+    const dateObj = new Date(orderData.scheduledTimeEpoch);
+    timeString = dateObj.toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' });
+  }
+
+  return `
+    <div style="font-family: sans-serif; max-width: 600px; padding: 20px; border: 2px solid #ff5722; border-radius: 8px;">
+      <h2 style="color: #d84315; margin-top: 0;">🚨 NEW ORDER: #${orderData.orderId}</h2>
+      
+      <p style="font-size: 18px; background-color: #fff3e0; padding: 10px; border-radius: 4px;">
+        <strong>Pickup Time:</strong> ${timeString}
+      </p>
+
+      <hr style="border: 1px solid #eeeeee; margin: 20px 0;" />
+      
+      <h3 style="margin-bottom: 10px;">Customer Details:</h3>
+      <p style="margin: 4px 0;"><strong>Name:</strong> ${orderData.customerName}</p>
+      <p style="margin: 4px 0;"><strong>Phone:</strong> ${orderData.customerPhone}</p>
+      <p style="margin: 4px 0;"><strong>Email:</strong> ${orderData.customerEmail}</p>
+
+      <hr style="border: 1px solid #eeeeee; margin: 20px 0;" />
+      
+      <h3 style="margin-bottom: 10px;">Order Items:</h3>
+      <ul style="padding-left: 20px; margin-top: 0;">
+        ${itemsHtml}
+      </ul>
+    </div>
+  `;
+};
