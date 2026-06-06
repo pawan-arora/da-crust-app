@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:da_crust_app/features/home/screens/home_screen.dart';
+
+// Tracks if the splash has been shown during this browser session
+bool hasAppInitialized = false;
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -11,38 +15,41 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeApp();
+    // Only run the timer if the app hasn't initialized yet
+    if (!hasAppInitialized) {
+      _initializeApp();
+    }
   }
 
   Future<void> _initializeApp() async {
-    // 🌟 Replace this with your actual initialization logic
-    // For example: await Firebase.initializeApp(); or checking user login status
-    await Future.delayed(const Duration(seconds: 3)); 
+    // Put any actual initialization logic here (Firebase, Configs, etc.)
+    await Future.delayed(const Duration(seconds: 3));
 
     if (!mounted) return;
 
-    // 🌟 Once loading is done, seamlessly replace the splash screen with your main app
-    Navigator.of(context).pushReplacementNamed('/'); // Or your Home/Login route
+    // 🌟 Swap the UI to the Home Screen WITHOUT touching the Navigator
+    setState(() {
+      hasAppInitialized = true;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // Match this background color to your Native Splash background color
-      backgroundColor: Colors.grey.shade50, 
+    // 🌟 If initialized (or user returned to menu), instantly render the Home Screen
+    if (hasAppInitialized) {
+      return const HomeScreen();
+    }
+
+   var name = 'assets/gif/screen_loader.gif';
+   return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 🌟 Your animated GIF loader
-            Image.asset(
-              'assets/gif/screen_loader.gif',
-              width: 200,
-              height: 200,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 24),
-          ],
+        child: SizedBox(
+          width: double.infinity,
+          child: Image.asset(
+            name,
+            fit: BoxFit.fitWidth, 
+          ),
         ),
       ),
     );

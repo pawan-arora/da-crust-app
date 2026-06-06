@@ -1,6 +1,6 @@
 const admin = require("firebase-admin");
-const { buildReceiptHtml } = require("./emailBuilder");
-const { buildSmsString } = require("./smsBuilder");
+const { buildReceiptHtml, buildOwnerEmailHtml } = require("./emailBuilder");
+const { buildSmsString, buildOwnerSmsString } = require("./smsBuilder");
 
 async function processSuccessfulOrder(orderId, paymentProvider) {
   const db = admin.firestore();
@@ -17,6 +17,10 @@ async function processSuccessfulOrder(orderId, paymentProvider) {
 
   const emailHtml = buildReceiptHtml(orderData, restaurantData);
   
+  // 🌟 2. Extract Owner contact info
+  const ownerEmail = restaurantData.contact?.email;
+  const ownerPhone = restaurantData.contact?.phone;
+
   const batch = db.batch();
 
   batch.update(orderRef, {
@@ -25,6 +29,7 @@ async function processSuccessfulOrder(orderId, paymentProvider) {
     paidAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
+  // --- CUSTOMER NOTIFICATIONS ---
   const mailRef = db.collection("mail").doc();
   batch.set(mailRef, {
     to: orderData.customerEmail,
@@ -39,6 +44,31 @@ async function processSuccessfulOrder(orderId, paymentProvider) {
       : "+64" + orderData.customerPhone.replace(/^0/, "");
     
     batch.set(smsRef, { to: phone, body: smsBody });
+  }
+
+  // --- 🌟 OWNER NOTIFICATIONS ---
+  
+  // Send email to owner if email exists
+  if (ownerEmail && ownerEmail.trim() !== "") {
+    const ownerMailRef = db.collection("mail").doc();
+    batch.set(ownerMailRef, {
+      to: ownerEmail,
+      message: { 
+        subject: `🚨 NEW ORDER #${orderData.orderId} - ${orderData.customerName}`, 
+        html: buildOwnerEmailHtml(orderData) 
+      },
+    });
+  }
+
+  // Send SMS to owner if phone exists
+  if (ownerPhone && ownerPhone.trim() !== "") {
+    const ownerSmsBody = buildOwnerSmsString(orderData);
+    const ownerSmsRef = db.collection("sms_messages").doc();
+    let formattedOwnerPhone = ownerPhone.startsWith("+")
+      ? ownerPhone
+      : "+64" + ownerPhone.replace(/^0/, "");
+    
+    batch.set(ownerSmsRef, { to: formattedOwnerPhone, body: ownerSmsBody });
   }
 
   await batch.commit();

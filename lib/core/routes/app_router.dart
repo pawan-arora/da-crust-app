@@ -1,7 +1,7 @@
+import 'package:da_crust_app/core/widgets/splash_screen.dart';
 import 'package:flutter/material.dart';
 
-// 🌟 Import the HomeScreen instead of SplashScreen
-import 'package:da_crust_app/features/home/screens/home_screen.dart';
+// 🌟 Import the SplashScreen
 import 'package:da_crust_app/features/payments/screens/order_success_screen.dart';
 import 'package:da_crust_app/features/payments/screens/order_failed_screen.dart';
 
@@ -41,8 +41,8 @@ class AppRouter {
   static Route<dynamic> _buildHomeRoute(RouteSettings settings) {
     return MaterialPageRoute(
       settings: settings,
-      // 🌟 Point directly to the HomeScreen
-      builder: (context) => const HomeScreen(),
+      // 🌟 Point directly to the SplashScreen (which will handle routing to Home automatically)
+      builder: (context) => const SplashScreen(),
     );
   }
 }

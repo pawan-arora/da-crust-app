@@ -18,7 +18,7 @@ if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
 // =========================================================================
 exports.createCheckoutSession = functions.region("australia-southeast1").https.onCall(async (data, context) => {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
-  
+
   // 🌟 SAFEGUARD: Check if the .env file actually loaded the key!
   if (!stripeKey) {
     console.error("CRITICAL ERROR: STRIPE_SECRET_KEY is undefined! The .env file did not load correctly in production.");
@@ -35,17 +35,17 @@ exports.createCheckoutSession = functions.region("australia-southeast1").https.o
     const currentEnv = process.env.APP_ENV || "local";
     const environments = {
       local: process.env.LOCAL_URL,
-      dev:   process.env.DEV_URL,
-      qa:    process.env.QA_URL,
-      prod:  process.env.PROD_URL,
+      dev: process.env.DEV_URL,
+      qa: process.env.QA_URL,
+      prod: process.env.PROD_URL,
     };
     const DOMAIN = environments[currentEnv] || "https://dacrust.co.nz";
 
     let stripeMethods;
     if (paymentMethod === "afterpay") {
-      stripeMethods = ["afterpay_clearpay"]; 
+      stripeMethods = ["afterpay_clearpay"];
     } else {
-      stripeMethods = ["card"]; 
+      stripeMethods = ["card"];
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -60,7 +60,7 @@ exports.createCheckoutSession = functions.region("australia-southeast1").https.o
       }],
       mode: "payment",
       success_url: `${DOMAIN}/#/success?orderId=${orderId}`,
-      cancel_url:  `${DOMAIN}/#/failed`,
+      cancel_url: `${DOMAIN}/#/failed`,
       metadata: { orderId: orderId },
     });
 
@@ -69,7 +69,7 @@ exports.createCheckoutSession = functions.region("australia-southeast1").https.o
     // 🌟 THE FIX: Actually log the error to the Firebase Console so we can read it!
     console.error("🔥 STRIPE CHECKOUT FAILED:", error.message);
     console.error("Full Error Details:", error);
-    
+
     throw new functions.https.HttpsError("internal", "Payment session failed to create.");
   }
 });
@@ -84,15 +84,15 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
     const finalAmountInCents = Math.round(Number(amount) * 100);
 
     const merchantId = process.env.WORLDLINE_MERCHANT_ID;
-    const apiKey     = process.env.WORLDLINE_API_KEY_ID;
-    const apiSecret  = process.env.WORLDLINE_SECRET_API_KEY;
+    const apiKey = process.env.WORLDLINE_API_KEY_ID;
+    const apiSecret = process.env.WORLDLINE_SECRET_API_KEY;
 
     const currentEnv = process.env.APP_ENV || "local";
     const environments = {
       local: process.env.LOCAL_URL,
-      dev:   process.env.DEV_URL,
-      qa:    process.env.QA_URL,
-      prod:  process.env.PROD_URL,
+      dev: process.env.DEV_URL,
+      qa: process.env.QA_URL,
+      prod: process.env.PROD_URL,
     };
     const DOMAIN = environments[currentEnv] || "https://dacrust.co.nz";
 
@@ -108,7 +108,7 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
       method: "POST",
       headers: {
         "Authorization": `Basic ${credentials}`,
-        "Content-Type":  "application/x-www-form-urlencoded",
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: "grant_type=client_credentials",
     });
@@ -117,20 +117,21 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
     const tokenData = await tokenResponse.json();
 
     const transactionId = crypto.randomUUID();
+    const shortRef = orderId.toString().slice(0, 12);
 
     const intentPayload = {
       merchantTransactionId: transactionId,
       integrationMode: "HOSTED",
       merchant: {
-        url:             DOMAIN,
-        redirectUrl:     `${DOMAIN}/#/success?orderId=${orderId}`,
+        url: DOMAIN,
+        redirectUrl: `${DOMAIN}/#/success?orderId=${orderId}`,
         notificationUrl: "https://australia-southeast1-da-crust-dev.cloudfunctions.net/worldlineWebhook",
-        merchantId:      merchantId,
+        merchantId: merchantId,
       },
       oepayment: {
-        amount:       finalAmountInCents,
-        currency:     "NZD",
-        reference:    orderId.toString().slice(0, 12), // The webhook will read this back!
+        amount: finalAmountInCents,
+        currency: "NZD",
+        reference: shortRef, 
       },
       risk: {
         userAgentInfo: { userAgent: userAgentString, userIpAddress: userIp }
@@ -141,7 +142,7 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
       method: "POST",
       headers: {
         "Authorization": `Bearer ${tokenData.access_token}`,
-        "Content-Type":  "application/json",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(intentPayload),
     });
@@ -150,11 +151,15 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
     const intentData = await intentResponse.json();
 
     await admin.firestore().collection("orders").doc(orderId).update({
-      status:    "PENDING_EFTPOS",
+      status: "PENDING_EFTPOS",
       paymarkId: intentData.paymentId,
     });
 
-    // 🌟 REMOVED the paymark_transactions write completely!
+    await admin.firestore().collection("paymark_transactions").doc(transactionId).set({
+      orderId: orderId,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
 
     return { url: intentData.paymentUrl };
   } catch (error) {
@@ -167,7 +172,7 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
 // 3. Webhooks (externalized)
 // =========================================================================
 const webhooks = require("./webhooks");
-exports.stripeWebhook    = webhooks.stripeWebhook;
+exports.stripeWebhook = webhooks.stripeWebhook;
 exports.worldlineWebhook = webhooks.worldlineWebhook;
 
 // =========================================================================
@@ -177,20 +182,27 @@ exports.sendSmsNotification = functions.region("australia-southeast1").firestore
   .document("sms_messages/{docId}")
   .onCreate(async (snapshot, context) => {
     if (!twilioClient) return snapshot.ref.update({ deliveryState: "ERROR" });
+
     try {
+      const data = snapshot.data();
+
       const response = await twilioClient.messages.create({
-        body: snapshot.data().body,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to:   snapshot.data().to,
+        body: data.body,
+        to: data.to,
+        // 🌟 CHANGE THIS: Use Messaging Service SID instead of from phone number
+        messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
       });
+
       return snapshot.ref.update({
-        deliveryState:    "SUCCESS",
+        deliveryState: "SUCCESS",
         twilioMessageSid: response.sid,
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     } catch (error) {
+      console.error("Twilio SMS Error:", error.message);
       return snapshot.ref.update({
         deliveryState: "ERROR",
-        errorMessage:  error.message,
+        errorMessage: error.message,
       });
     }
   });
