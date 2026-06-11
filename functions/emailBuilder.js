@@ -162,6 +162,17 @@ exports.buildOwnerEmailHtml = (orderData) => {
     timeString = dateObj.toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' });
   }
 
+  // 🌟 NEW: Check for an order note and create a highlighted HTML block for it
+  let orderNoteHtml = "";
+  if (orderData.orderNote && orderData.orderNote.trim() !== "") {
+    orderNoteHtml = `
+      <div style="background-color: #ffebee; padding: 12px; border-left: 4px solid #f44336; margin: 15px 0; border-radius: 4px;">
+        <h4 style="margin: 0 0 5px 0; color: #d32f2f;">📝 Special Instructions / Note:</h4>
+        <p style="margin: 0; font-size: 16px; color: #b71c1c;">${orderData.orderNote}</p>
+      </div>
+    `;
+  }
+
   return `
     <div style="font-family: sans-serif; max-width: 600px; padding: 20px; border: 2px solid #ff5722; border-radius: 8px;">
       <h2 style="color: #d84315; margin-top: 0;">🚨 NEW ORDER: #${orderData.orderId}</h2>
@@ -169,6 +180,8 @@ exports.buildOwnerEmailHtml = (orderData) => {
       <p style="font-size: 18px; background-color: #fff3e0; padding: 10px; border-radius: 4px;">
         <strong>Pickup Time:</strong> ${timeString}
       </p>
+
+      ${orderNoteHtml}
 
       <hr style="border: 1px solid #eeeeee; margin: 20px 0;" />
       
