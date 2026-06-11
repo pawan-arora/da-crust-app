@@ -8,30 +8,42 @@ class ReviewsListDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 🌟 1. Detect screen size and set a mobile breakpoint
+    final size = MediaQuery.sizeOf(context);
+    final isMobile = size.width < 600;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      // 🌟 2. Responsive margins: tight on mobile, spacious on desktop
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : size.width * 0.1, 
+        vertical: isMobile ? 24 : size.height * 0.1,
+      ), 
       child: Container(
-        // 🌟 THE FIX 1: Forces the dialog to respect the boundary, stopping the button from flying off-screen
         width: double.maxFinite, 
+        // Stops the dialog from stretching awkwardly on ultra-wide monitors
         constraints: const BoxConstraints(maxWidth: 800), 
-        padding: const EdgeInsets.all(24),
+        // 🌟 3. Responsive inner padding
+        padding: EdgeInsets.all(isMobile ? 16 : 32), 
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             
-            // 🌟 THE FIX 2: A bulletproof Header Row
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     "Customer Reviews", 
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis, // Prevents text overflow if screen gets too small
+                    // Responsive header font size
+                    style: TextStyle(
+                      fontSize: isMobile ? 20 : 24, 
+                      fontWeight: FontWeight.bold
+                    ),
+                    overflow: TextOverflow.ellipsis, 
                   ),
                 ),
                 
-                // Enhanced, highly visible close button
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
@@ -64,9 +76,10 @@ class ReviewsListDialog extends StatelessWidget {
                 }
 
                 return ModernCarousel(
-                  height: 220,
-                  scrollAmount: 320,
-                  items: reviews.map((review) => _buildReviewCard(review)).toList(),
+                  // Slightly taller on desktop to accommodate larger text
+                  height: isMobile ? 220 : 260,
+                  scrollAmount: isMobile ? size.width * 0.75 : 320,
+                  items: reviews.map((review) => _buildReviewCard(context, review, isMobile)).toList(),
                 );
               }
             ),
@@ -76,10 +89,16 @@ class ReviewsListDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildReviewCard(AppReview review) {
+  Widget _buildReviewCard(BuildContext context, AppReview review, bool isMobile) {
+    // 🌟 4. Responsive Card Width: 
+    // Desktop: Fixed at 300px. 
+    // Mobile: Takes up 75% of the screen so the user sees a "peek" of the next card, letting them know they can swipe!
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final cardWidth = isMobile ? screenWidth * 0.75 : 300.0;
+
     return Container(
-      width: 300,
-      padding: const EdgeInsets.all(16),
+      width: cardWidth,
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
@@ -88,7 +107,10 @@ class ReviewsListDialog extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(review.authorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          Text(
+            review.authorName, 
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 15 : 16)
+          ),
           const SizedBox(height: 4),
           Row(
             children: List.generate(5, (starIndex) => Icon(
@@ -103,7 +125,11 @@ class ReviewsListDialog extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               child: Text(
                 review.comment,
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade800, height: 1.4),
+                style: TextStyle(
+                  fontSize: isMobile ? 13 : 14, 
+                  color: Colors.grey.shade800, 
+                  height: 1.4
+                ),
               ),
             ),
           ),

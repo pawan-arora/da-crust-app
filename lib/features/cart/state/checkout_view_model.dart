@@ -73,7 +73,7 @@ class CheckoutViewModel extends ChangeNotifier {
   double get finalTotal =>
       double.parse((subtotal + currentSurcharge).toStringAsFixed(2));
 
-  bool wantsSms = true;
+  bool wantsSms = false;
 
   void toggleSmsPreference(bool value) {
     wantsSms = value;
