@@ -13,6 +13,19 @@
             ]
         },
         {
+            "name": "Da Crust (Network Testing)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "deviceId": "chrome",
+            "flutterMode": "debug",
+            "args": [
+                "--web-hostname", "192.168.29.218",
+                "--web-port", "8080",
+                "--dart-define=ENV=dev"
+            ]
+        },
+        {
             "name": "Da Crust (PROD - Live Data)",
             "request": "launch",
             "type": "dart",

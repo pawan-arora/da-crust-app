@@ -40,16 +40,13 @@ class _SplashScreenState extends State<SplashScreen> {
       return const HomeScreen();
     }
 
-   var name = 'assets/gif/screen_loader.gif';
-   return Scaffold(
+    var name = 'assets/gif/screen_loader.gif';
+    return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: SizedBox(
-          width: double.infinity,
-          child: Image.asset(
-            name,
-            fit: BoxFit.fitWidth, 
-          ),
+        child: SizedBox.expand(
+          // This automatically sets width and height to double.infinity
+          child: Image.asset(name, fit: BoxFit.cover),
         ),
       ),
     );

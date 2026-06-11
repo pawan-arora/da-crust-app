@@ -12,7 +12,13 @@ class DateTimeUtils {
   }
 
   // --- 2. Helper to create a pure NZ Date Object ---
-  static tz.TZDateTime createNzTime(int year, int month, int day, int hour, int minute) {
+  static tz.TZDateTime createNzTime(
+    int year,
+    int month,
+    int day,
+    int hour,
+    int minute,
+  ) {
     return tz.TZDateTime(_nz, year, month, day, hour, minute);
   }
 
@@ -40,7 +46,13 @@ class DateTimeUtils {
     if (currentTotalMinutes >= closeTotalMinutes) {
       final tomorrow = nzNow.add(const Duration(days: 1));
       final openHour = getOpeningHour(tomorrow.weekday);
-      return createNzTime(tomorrow.year, tomorrow.month, tomorrow.day, openHour, 0);
+      return createNzTime(
+        tomorrow.year,
+        tomorrow.month,
+        tomorrow.day,
+        openHour,
+        0,
+      );
     }
 
     final openHour = getOpeningHour(nzNow.weekday);
@@ -78,9 +90,28 @@ class DateTimeUtils {
     return true;
   }
 
+  // Strictly checks if a time falls within the store's open/close window ---
+  static bool isWithinOperatingHours(
+    DateTime pickedDate,
+    TimeOfDay pickedTime,
+  ) {
+    final pickedTotalMinutes = pickedTime.hour * 60 + pickedTime.minute;
+    final closeTotalMinutes = getClosingHour() * 60 + getClosingMinute();
+    final openTotalMinutes = getOpeningHour(pickedDate.weekday) * 60;
+
+    if (pickedTotalMinutes < openTotalMinutes ||
+        pickedTotalMinutes >= closeTotalMinutes) {
+      return false;
+    }
+
+    return true;
+  }
+
   // --- 6. Formatting Helpers ---
   static String formatDateTime(DateTime date) {
-    final hour = date.hour == 0 ? 12 : (date.hour > 12 ? date.hour - 12 : date.hour);
+    final hour = date.hour == 0
+        ? 12
+        : (date.hour > 12 ? date.hour - 12 : date.hour);
     final ampm = date.hour >= 12 ? 'PM' : 'AM';
     final minute = date.minute.toString().padLeft(2, '0');
     return "${date.day}/${date.month} at $hour:$minute $ampm";
@@ -117,9 +148,20 @@ class DateTimeUtils {
   }
 
   // --- 7. Status & Business Hours Helpers ---
-  static tz.TZDateTime? getNextOpenTime(DateTime nzTime, Map<String, dynamic>? hoursMap) {
+  static tz.TZDateTime? getNextOpenTime(
+    DateTime nzTime,
+    Map<String, dynamic>? hoursMap,
+  ) {
     if (hoursMap == null) return null;
-    final weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    final weekdays = [
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+    ];
 
     for (int offset = 0; offset <= 7; offset++) {
       final checkDate = nzTime.add(Duration(days: offset));
@@ -131,7 +173,7 @@ class DateTimeUtils {
         if (openParts.length == 2) {
           final openHour = int.tryParse(openParts[0]) ?? 0;
           final openMinute = int.tryParse(openParts[1]) ?? 0;
-          
+
           final openDateTime = createNzTime(
             checkDate.year,
             checkDate.month,
@@ -146,9 +188,20 @@ class DateTimeUtils {
     return null;
   }
 
-  static tz.TZDateTime? getCloseTimeForToday(DateTime nzTime, Map<String, dynamic>? hoursMap) {
+  static tz.TZDateTime? getCloseTimeForToday(
+    DateTime nzTime,
+    Map<String, dynamic>? hoursMap,
+  ) {
     if (hoursMap == null) return null;
-    final weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    final weekdays = [
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+    ];
     final currentDayString = weekdays[nzTime.weekday - 1];
     final todayHours = hoursMap[currentDayString];
 
@@ -157,7 +210,7 @@ class DateTimeUtils {
       if (closeParts.length == 2) {
         final closeHour = int.tryParse(closeParts[0]) ?? 0;
         final closeMinute = int.tryParse(closeParts[1]) ?? 0;
-        
+
         return createNzTime(
           nzTime.year,
           nzTime.month,

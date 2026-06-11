@@ -1,15 +1,14 @@
 import 'dart:async';
+import 'package:da_crust_app/data/model/order_details.dart';
+import 'package:flutter/material.dart';
+import 'package:confetti/confetti.dart';
+
 import 'package:da_crust_app/core/utils/string_utils.dart';
 import 'package:da_crust_app/core/widgets/splash_screen.dart';
 import 'package:da_crust_app/features/payments/mixins/auto_redirect_timer_mixin.dart';
-import 'package:da_crust_app/features/payments/state/order_repository.dart';
 import 'package:da_crust_app/features/payments/widgets/return_to_menu_button.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:confetti/confetti.dart';
-
-// 🌟 Import your new Mixin!
 import 'package:da_crust_app/features/cart/state/cart_manager.dart';
+import 'package:da_crust_app/features/payments/services/order_database_service.dart';
 
 class OrderSuccessScreen extends StatefulWidget {
   final String orderId;
@@ -25,14 +24,19 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   String? _fetchedTime;
   String? _customerEmail;
   String? _customerPhone;
-  final OrderRepository _orderRepo = OrderRepository();
+  
+  // 🌟 The UI only talks to the Service now
+  final OrderDatabaseService _dbService = OrderDatabaseService();
 
   bool _isLoading = true;
   bool _isTakingTooLong = false;
-  bool _hasProcessedSuccess = false; // Prevents clearing the cart twice
+  bool _isVerifying = false; 
+  bool _hasProcessedSuccess = false;
 
   late ConfettiController _confettiController;
-  StreamSubscription<DocumentSnapshot>? _orderSubscription;
+  
+  // 🌟 Listening to clean OrderDetails, not raw Firebase snapshots
+  StreamSubscription<OrderDetails>? _orderSubscription;
 
   @override
   void initState() {
@@ -43,7 +47,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
     );
     _listenToOrderStatus();
 
-    // Show cancellation fallback button after 5 seconds if Paymark is hanging
+    // Show verification fallback button after 5 seconds if the bank is hanging
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted && _isLoading) setState(() => _isTakingTooLong = true);
     });
@@ -53,16 +57,13 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   void dispose() {
     _orderSubscription?.cancel();
     _confettiController.dispose();
-    // 🌟 The mixin automatically handles canceling the timer here!
     super.dispose();
   }
 
-  // 🌟 A clean helper method to start the mixin timer
   void _triggerRedirectTimer() {
     startAutoRedirectTimer(
       maxSeconds: 15,
-      onTick: () =>
-          setState(() {}), // Refresh UI every second for the countdown
+      onTick: () => setState(() {}),
       onComplete: () {
         if (ModalRoute.of(context)?.isCurrent == true) {
           Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
@@ -78,50 +79,72 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
       return;
     }
 
-    _orderSubscription = _orderRepo
-        .listenToOrder(widget.orderId)
-        .listen(
-          (snapshot) {
-            if (snapshot.exists) {
-              final data = snapshot.data()!;
-              final status = data['status'] as String?;
+    _orderSubscription = _dbService.listenToOrder(widget.orderId).listen(
+      (orderDetails) {
+        if (orderDetails.exists) {
+          final status = orderDetails.status;
 
-              if (status == 'PAID') {
-                if (!_hasProcessedSuccess) {
-                  _hasProcessedSuccess = true;
+          if (status == 'PAID') {
+            if (!_hasProcessedSuccess) {
+              _hasProcessedSuccess = true;
+              
+              // Safely clear the cart only once
+              CartManager.instance.clearCart();
 
-                  // SAFELY CLEAR THE CART
-                  CartManager.instance.clearCart();
-
-                  setState(() {
-                    _fetchedTime = data['scheduledTime'] as String?;
-                    _customerEmail = data['customerEmail'] as String?;
-                    _customerPhone = data['customerPhone'] as String?;
-                    _isLoading = false;
-                  });
-                  _confettiController.play();
-                  _triggerRedirectTimer();
-                }
-              } else if (status == 'FAILED' || status == 'DECLINED') {
-                // Actively boot them to the failure screen if the bank rejects it
-                cancelAutoRedirectTimer(); // 🌟 Mixin method
-                _orderSubscription?.cancel();
-                if (!mounted) return;
-                Navigator.of(
-                  context,
-                ).pushNamedAndRemoveUntil('/failed', (route) => false);
-              }
-            } else {
-              setState(() => _isLoading = false);
+              setState(() {
+                _fetchedTime = orderDetails.scheduledTime;
+                _customerEmail = orderDetails.customerEmail;
+                _customerPhone = orderDetails.customerPhone;
+                _isLoading = false;
+              });
+              
+              _confettiController.play();
               _triggerRedirectTimer();
             }
-          },
-          onError: (e) {
-            debugPrint("Error listening to order: $e");
-            setState(() => _isLoading = false);
-            _triggerRedirectTimer();
-          },
+          } else if (status == 'FAILED' || status == 'DECLINED') {
+            cancelAutoRedirectTimer();
+            _orderSubscription?.cancel();
+            if (!mounted) return;
+            Navigator.of(context).pushNamedAndRemoveUntil('/failed', (route) => false);
+          } else {
+            // Still PENDING or CREATED
+            if (mounted) setState(() => _isLoading = true);
+          }
+        } else {
+          // Document does not exist yet
+          setState(() => _isLoading = false);
+          _triggerRedirectTimer();
+        }
+      },
+      onError: (e) {
+        debugPrint("Error listening to order: $e");
+        setState(() => _isLoading = false);
+        _triggerRedirectTimer();
+      },
+    );
+  }
+
+  Future<void> _verifyPaymentManually() async {
+    setState(() => _isVerifying = true);
+    try {
+      // 🌟 Clean Service Call
+      final status = await _dbService.verifyEftposStatus(widget.orderId);
+      
+      if (status == 'PENDING' || status == 'CREATED' || status == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Payment is still pending. Please check your bank app.")),
         );
+      }
+    } catch (e) {
+      debugPrint("Verification failed: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Unable to verify payment at this time. Please wait.")),
+      );
+    } finally {
+      if (mounted) setState(() => _isVerifying = false);
+    }
   }
 
   @override
@@ -161,21 +184,35 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                         ),
                       ),
 
+                      // 🌟 Polling Fallback UI
                       if (_isTakingTooLong) ...[
                         const SizedBox(height: 40),
-                        TextButton.icon(
+                        _isVerifying
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : OutlinedButton.icon(
+                                onPressed: _verifyPaymentManually,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text("Still waiting? Verify Payment"),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: primaryColor,
+                                  side: BorderSide(color: primaryColor.withOpacity(0.5)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                ),
+                              ),
+                        const SizedBox(height: 16),
+                        TextButton(
                           onPressed: () {
-                            cancelAutoRedirectTimer(); // 🌟 Mixin method
+                            cancelAutoRedirectTimer();
                             _orderSubscription?.cancel();
-                            Navigator.of(context).pushNamedAndRemoveUntil(
-                              '/failed',
-                              (route) => false,
-                            );
+                            Navigator.of(context).pushNamedAndRemoveUntil('/failed', (route) => false);
                           },
-                          icon: const Icon(Icons.cancel_outlined),
-                          label: const Text("Cancel Payment"),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red.shade600,
+                          child: Text(
+                            "Cancel Payment",
+                            style: TextStyle(color: Colors.red.shade400),
                           ),
                         ),
                       ],
@@ -288,7 +325,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                               primaryColor: primaryColor,
                               onPressed: () {
                                 hasAppInitialized = true;
-                                cancelAutoRedirectTimer(); // 🌟 Mixin method
+                                cancelAutoRedirectTimer(); 
                                 Navigator.of(context).pushNamedAndRemoveUntil(
                                   '/',
                                   (route) => false,

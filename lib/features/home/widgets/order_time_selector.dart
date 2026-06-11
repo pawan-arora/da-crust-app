@@ -12,16 +12,31 @@ class OrderTimeSelector extends StatelessWidget {
   });
 
   Future<void> _pickDateTime(BuildContext context) async {
-    // Let the util class decide exactly what date/time to show by default!
-    final smartDefaultTime = DateTimeUtils.getDefaultPickupTime();
+    final now = DateTime.now(); 
+    final minAllowedTime = now.add(const Duration(minutes: 15));
+
+    final todayClosingTime = DateTime(now.year, now.month, now.day, 21, 30); 
+    DateTime firstAvailableDate = DateTime(now.year, now.month, now.day); 
+
+    // If adding 15 mins pushes us past 9:30 PM, today is no longer an option. Jump to tomorrow.
+    if (minAllowedTime.isAfter(todayClosingTime)) {
+      firstAvailableDate = now.add(const Duration(days: 1));
+      firstAvailableDate = DateTime(firstAvailableDate.year, firstAvailableDate.month, firstAvailableDate.day);
+    }
+
+    // Explicitly typed as DateTime to prevent TZDateTime mismatch errors
+    DateTime smartDefaultTime = DateTimeUtils.getDefaultPickupTime();
+    if (smartDefaultTime.isBefore(firstAvailableDate)) {
+      smartDefaultTime = firstAvailableDate;
+    }
     final initialDateToShow = scheduledTime ?? smartDefaultTime;
 
-    // 1. Pick the Date
+    // --- Pick the Date ---
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: initialDateToShow, 
-      firstDate: smartDefaultTime, // Locks out dates in the past/when closed
-      lastDate: smartDefaultTime.add(const Duration(days: 7)), 
+      firstDate: firstAvailableDate, 
+      lastDate: firstAvailableDate.add(const Duration(days: 7)), 
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -35,7 +50,7 @@ class OrderTimeSelector extends StatelessWidget {
     );
 
     if (pickedDate != null && context.mounted) {
-      // 2. Pick the Time
+      // --- Pick the Time ---
       final pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay(
@@ -45,33 +60,71 @@ class OrderTimeSelector extends StatelessWidget {
       );
 
       if (pickedTime != null && context.mounted) {
-        
+        final selectedDateTime = DateTime(
+          pickedDate.year, pickedDate.month, pickedDate.day, 
+          pickedTime.hour, pickedTime.minute,
+        );
+
         // --- VALIDATION LAYER ---
-        if (DateTimeUtils.isValidPickupTime(pickedDate, pickedTime)) {
-          final newTime = DateTimeUtils.createNzTime(
-            pickedDate.year, pickedDate.month, pickedDate.day, 
-            pickedTime.hour, pickedTime.minute,
-          );
-          onTimeChanged(newTime);
-        } else {
-          final openStr = pickedDate.weekday == DateTime.monday ? "4:00 PM" : "11:00 AM";
+
+        // Validation 1: Explicit Past Time Check (MUST BE FIRST)
+        if (selectedDateTime.isBefore(now)) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Please select a future time between $openStr and 9:30 PM.", 
+              content: const Text("You cannot select a time in the past.", 
+                style: TextStyle(fontWeight: FontWeight.w600)),
+              backgroundColor: Colors.red.shade600, 
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          return; // Stop execution here
+        }
+
+        // Validation 2: 15-Minute Prep Time Check
+        if (selectedDateTime.isBefore(minAllowedTime)) {
+          final minTimeOfDay = TimeOfDay.fromDateTime(minAllowedTime);
+          final formattedMinTime = minTimeOfDay.format(context);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Please allow at least 15 mins for prep. Earliest time is $formattedMinTime.", 
                 style: const TextStyle(fontWeight: FontWeight.w600)),
               backgroundColor: Colors.red.shade600, 
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 4),
             ),
           );
+          return; // Stop execution here
         }
+
+        // Validation 3: Standard Operating Hours Check (LAST)
+        if (!DateTimeUtils.isWithinOperatingHours(pickedDate, pickedTime)) {
+          final openStr = pickedDate.weekday == DateTime.monday ? "4:00 PM" : "11:00 AM";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Please select a time between $openStr and 9:30 PM.", 
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+              backgroundColor: Colors.red.shade600, 
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          return; // Stop execution here
+        }
+
+        // If all 3 validations pass, schedule the time!
+        final newTime = DateTimeUtils.createNzTime(
+          pickedDate.year, pickedDate.month, pickedDate.day, 
+          pickedTime.hour, pickedTime.minute,
+        );
+        onTimeChanged(newTime);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 🌟 No more "ASAP"! Get the time they scheduled, or fallback to the smart default.
     final displayTime = scheduledTime ?? DateTimeUtils.getDefaultPickupTime();
 
     return InkWell(

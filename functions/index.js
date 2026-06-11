@@ -1,6 +1,7 @@
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
 
 admin.initializeApp();
 
@@ -88,6 +89,8 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
     const apiSecret = process.env.WORLDLINE_SECRET_API_KEY;
 
     const currentEnv = process.env.APP_ENV || "local";
+    
+    // 🌟 1. Dynamic Domains
     const environments = {
       local: process.env.LOCAL_URL,
       dev: process.env.DEV_URL,
@@ -96,6 +99,12 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
     };
     const DOMAIN = environments[currentEnv] || "https://dacrust.co.nz";
 
+    // 🌟 2. Dynamic Paymark API Base URL
+    // Use the live API for prod, and the test API for everything else
+    const PAYMARK_BASE_URL = currentEnv === "prod" 
+      ? "https://api.paymark.nz" 
+      : "https://apitest.paymark.nz";
+
     let userIp = "127.0.0.1";
     if (context.rawRequest && context.rawRequest.ip) {
       const ipv4Match = context.rawRequest.ip.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
@@ -103,8 +112,9 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
     }
     const userAgentString = context.rawRequest ? context.rawRequest.get("user-agent") || "Mozilla/5.0 (Server)" : "Mozilla/5.0 (Server)";
 
+    // 🌟 3. Use the dynamic base URL for the Bearer Token
     const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
-    const tokenResponse = await fetch("https://apitest.paymark.nz/bearer", {
+    const tokenResponse = await fetch(`${PAYMARK_BASE_URL}/bearer`, {
       method: "POST",
       headers: {
         "Authorization": `Basic ${credentials}`,
@@ -118,6 +128,9 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
 
     const transactionId = crypto.randomUUID();
     const shortRef = orderId.toString().slice(0, 12);
+    
+    const firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+    const projectId = firebaseConfig.projectId;
 
     const intentPayload = {
       merchantTransactionId: transactionId,
@@ -125,20 +138,23 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
       merchant: {
         url: DOMAIN,
         redirectUrl: `${DOMAIN}/#/success?orderId=${orderId}`,
-        notificationUrl: "https://australia-southeast1-da-crust-dev.cloudfunctions.net/worldlineWebhook",
+        notificationUrl: `https://australia-southeast1-${projectId}.cloudfunctions.net/worldlineWebhook`,
         merchantId: merchantId,
       },
       oepayment: {
         amount: finalAmountInCents,
         currency: "NZD",
-        reference: shortRef, 
+        reference: shortRef,
       },
       risk: {
         userAgentInfo: { userAgent: userAgentString, userIpAddress: userIp }
       }
     };
-
-    const intentResponse = await fetch("https://apitest.paymark.nz/oe/transactions/v2/payments/create-intent", {
+    
+    console.log("SENDING WEBHOOK URL TO PAYMARK:", intentPayload.merchant.notificationUrl);
+    
+    // 🌟 4. Use the dynamic base URL for creating the Intent
+    const intentResponse = await fetch(`${PAYMARK_BASE_URL}/oe/transactions/v2/payments/create-intent`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${tokenData.access_token}`,
@@ -160,7 +176,6 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-
     return { url: intentData.paymentUrl };
   } catch (error) {
     console.error("Paymark Error:", error.message);
@@ -168,15 +183,74 @@ exports.createOnlineEftposSession = functions.region("australia-southeast1").htt
   }
 });
 
+
 // =========================================================================
-// 3. Webhooks (externalized)
+// 3. Polling Fallback Function
+// =========================================================================
+exports.verifyEftposStatus = functions.region("australia-southeast1").https.onCall(async (data, context) => {
+  try {
+    const orderId = data.orderId;
+    if (!orderId) throw new functions.https.HttpsError("invalid-argument", "Missing orderId");
+
+    const orderDoc = await admin.firestore().collection("orders").doc(orderId).get();
+    if (!orderDoc.exists) throw new functions.https.HttpsError("not-found", "Order not found");
+    
+    const paymarkId = orderDoc.data().paymarkId;
+    if (!paymarkId) return { status: orderDoc.data().status }; // No EFTPOS ID attached
+
+    const apiKey = process.env.WORLDLINE_API_KEY_ID;
+    const apiSecret = process.env.WORLDLINE_SECRET_API_KEY;
+    const currentEnv = process.env.APP_ENV || "local";
+    const PAYMARK_BASE_URL = currentEnv === "prod" ? "https://api.paymark.nz" : "https://apitest.paymark.nz";
+
+    // 1. Get Auth Token
+    const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
+    const tokenResponse = await fetch(`${PAYMARK_BASE_URL}/bearer`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${credentials}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "grant_type=client_credentials",
+    });
+    
+    if (!tokenResponse.ok) throw new Error("Auth failed fetching Paymark status.");
+    const tokenData = await tokenResponse.json();
+
+    // 2. Fetch Live Status from Paymark
+    const statusResponse = await fetch(`${PAYMARK_BASE_URL}/oe/transactions/v2/payments/${paymarkId}`, {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${tokenData.access_token}` },
+    });
+    
+    if (!statusResponse.ok) throw new Error("Failed to fetch transaction status.");
+    const statusData = await statusResponse.json();
+    const actualStatus = statusData.status;
+
+    // 3. Force Database Update if the webhook missed it
+    if (actualStatus === "AUTHORISED" && orderDoc.data().status !== "PAID") {
+      await processSuccessfulOrder(orderId, "Paymark_OnlineEFTPOS");
+    } else if (["DECLINED", "EXPIRED", "ERROR"].includes(actualStatus)) {
+      const firestoreStatus = actualStatus === "DECLINED" ? "DECLINED" : "FAILED";
+      await admin.firestore().collection("orders").doc(orderId).update({ status: firestoreStatus });
+    }
+
+    return { status: actualStatus };
+  } catch (error) {
+    console.error("Manual Verification Error:", error.message);
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+// =========================================================================
+// 4. Webhooks (externalized)
 // =========================================================================
 const webhooks = require("./webhooks");
 exports.stripeWebhook = webhooks.stripeWebhook;
 exports.worldlineWebhook = webhooks.worldlineWebhook;
 
 // =========================================================================
-// 4. Background Triggers
+// 5. Background Triggers
 // =========================================================================
 exports.sendSmsNotification = functions.region("australia-southeast1").firestore
   .document("sms_messages/{docId}")
@@ -189,7 +263,6 @@ exports.sendSmsNotification = functions.region("australia-southeast1").firestore
       const response = await twilioClient.messages.create({
         body: data.body,
         to: data.to,
-        // 🌟 CHANGE THIS: Use Messaging Service SID instead of from phone number
         messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
       });
 
