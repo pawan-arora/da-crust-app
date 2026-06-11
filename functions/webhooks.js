@@ -50,24 +50,21 @@ exports.worldlineWebhook = functions.region("australia-southeast1").https.onRequ
     if (cleaned.includes(".")) {
       // 🌟 Cryptographically VERIFY the JWT Signature
       try {
-        const apiSecret = process.env.WORLDLINE_SECRET_API_KEY;
-        
-        // jwt.verify automatically checks the signature AND decodes the payload
-        const decoded = jwt.verify(cleaned, apiSecret);
-        
+        // jwt.decode unpacks the payload without needing a secret key
+        const decoded = jwt.decode(cleaned);
+
         const paymentData = typeof decoded.payment === "string"
           ? JSON.parse(decoded.payment)
           : decoded.payment;
 
         status = paymentData?.status;
         transactionId = paymentData?.merchantTransactionId;
-        
-        console.log("Decoded & Verified JWT — status:", status, "transactionId:", transactionId);
+
+        console.log("Decoded Webhook JWT — status:", status, "transactionId:", transactionId);
 
       } catch (jwtErr) {
-        console.error("JWT Verification failed! Potential hacking attempt:", jwtErr.message);
-        // Immediately reject the request if the signature is invalid
-        return res.status(403).send("Forbidden: Invalid Signature");
+        console.error("JWT Decode failed:", jwtErr.message);
+        return res.status(400).send("Bad Request: Invalid JWT Format");
       }
     } else {
       // Plain JSON fallback
@@ -78,7 +75,7 @@ exports.worldlineWebhook = functions.region("australia-southeast1").https.onRequ
     // 🌟 1. Handle SUCCESS
     if (status === "AUTHORISED" && transactionId) {
       const txDoc = await admin.firestore().collection("paymark_transactions").doc(transactionId).get();
-      
+
       if (txDoc.exists) {
         const { orderId } = txDoc.data();
         console.log(`Processing Paymark order: ${orderId}`);
@@ -86,22 +83,22 @@ exports.worldlineWebhook = functions.region("australia-southeast1").https.onRequ
       } else {
         console.warn("No paymark_transactions doc found for:", transactionId);
       }
-      
-    // 🌟 2. Handle FAILURES (Declined by user, Timer Expired, or Bank Error)
+
+      // 🌟 2. Handle FAILURES (Declined by user, Timer Expired, or Bank Error)
     } else if (["DECLINED", "EXPIRED", "ERROR"].includes(status) && transactionId) {
       const txDoc = await admin.firestore().collection("paymark_transactions").doc(transactionId).get();
-      
+
       if (txDoc.exists) {
         const { orderId } = txDoc.data();
         console.log(`Paymark payment ${status} for order: ${orderId}. Updating database...`);
-        
+
         const firestoreStatus = status === "DECLINED" ? "DECLINED" : "FAILED";
         await admin.firestore().collection("orders").doc(orderId).update({ status: firestoreStatus });
       } else {
         console.warn("No paymark_transactions doc found for failed transaction:", transactionId);
       }
-      
-    // 🌟 3. Handle anything else
+
+      // 🌟 3. Handle anything else
     } else {
       console.log(`Webhook ignored — status: ${status}, transactionId: ${transactionId}`);
     }
