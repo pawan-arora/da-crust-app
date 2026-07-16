@@ -1,4 +1,4 @@
-import 'package:da_crust_app/core/widgets/splash_screen.dart';
+import 'package:da_crust_app/features/home/screens/welcome_screen.dart';
 import 'package:da_crust_app/features/payments/mixins/auto_redirect_timer_mixin.dart';
 import 'package:da_crust_app/features/payments/widgets/return_to_menu_button.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +17,7 @@ class _OrderFailedScreenState extends State<OrderFailedScreen>
   @override
   void initState() {
     super.initState();
-    hasAppInitialized = true;
+    hasWelcomeScreenInitialized = true;
     // 🌟 Start the timer as soon as the screen loads
     startAutoRedirectTimer(
       maxSeconds: 15,
@@ -112,7 +112,7 @@ class _OrderFailedScreenState extends State<OrderFailedScreen>
                     countdown: countdown,
                     primaryColor: primaryColor,
                     onPressed: () {
-                      hasAppInitialized = true;
+                      hasWelcomeScreenInitialized = true;
                       cancelAutoRedirectTimer(); // Stop timer if user clicks manually
                       Navigator.of(
                         context,

@@ -1,4 +1,4 @@
-import 'package:da_crust_app/core/widgets/splash_screen.dart';
+import 'package:da_crust_app/features/home/screens/welcome_screen.dart';
 import 'package:flutter/material.dart';
 
 // 🌟 Import the SplashScreen
@@ -6,7 +6,6 @@ import 'package:da_crust_app/features/payments/screens/order_success_screen.dart
 import 'package:da_crust_app/features/payments/screens/order_failed_screen.dart';
 
 class AppRouter {
-  
   static Route<dynamic> generateRoute(RouteSettings settings) {
     final uri = Uri.parse(settings.name ?? '/');
 
@@ -24,7 +23,7 @@ class AppRouter {
 
   static Route<dynamic> _buildSuccessRoute(Uri uri, RouteSettings settings) {
     final String orderId = uri.queryParameters['orderId'] ?? 'Unknown Order';
-    
+
     return MaterialPageRoute(
       settings: settings,
       builder: (context) => OrderSuccessScreen(orderId: orderId),
@@ -42,7 +41,9 @@ class AppRouter {
     return MaterialPageRoute(
       settings: settings,
       // 🌟 Point directly to the SplashScreen (which will handle routing to Home automatically)
-      builder: (context) => const SplashScreen(),
+      builder:
+          (context) => //const SplashScreen(),
+              const WelcomeScreen(), // Use WelcomeScreen directly for now
     );
   }
 }
