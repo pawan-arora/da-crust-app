@@ -68,3 +68,7 @@ firebase-debug.*.log
 Thumbs.db
 assets/config.env
 devtools_options.yaml
+
+linux/
+
+functions/
