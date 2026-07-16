@@ -23,6 +23,7 @@ class _RestaurantStatusWidgetState extends State<RestaurantStatusWidget> {
 
   // --- 🌟 FETCH DATA ONCE ---
   Future<void> _loadHours() async {
+    await RestaurantService.instance.fetchRestaurantData();
     final hours = await RestaurantService.instance.fetchOpeningHours();
     if (mounted) {
       setState(() {

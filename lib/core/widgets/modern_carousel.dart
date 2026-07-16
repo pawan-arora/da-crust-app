@@ -90,7 +90,7 @@ class _ModernCarouselState extends State<ModernCarousel> {
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: widget.items.length,
-              separatorBuilder: (_, __) => SizedBox(width: widget.separatorWidth),
+              separatorBuilder: (_, _) => SizedBox(width: widget.separatorWidth),
               itemBuilder: (context, index) => widget.items[index],
             ),
           ),

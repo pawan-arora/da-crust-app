@@ -310,7 +310,7 @@ class _HomeContentState extends State<HomeContent> {
             background: Container(
               decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: const AssetImage('assets/images/pizza.jpg'),
+                  image: const AssetImage('assets/images/pizza.png'),
                   fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
                     Colors.black.withOpacity(0.55),

@@ -125,7 +125,7 @@ class _RestaurantInfoDialogState extends State<RestaurantInfoDialog> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).primaryColor,
                   image: DecorationImage(
-                    image: const AssetImage('assets/images/pizza.jpg'),
+                    image: const AssetImage('assets/images/pizza.png'),
                     fit: BoxFit.cover,
                     colorFilter: ColorFilter.mode(
                       Colors.black.withAlpha(150),

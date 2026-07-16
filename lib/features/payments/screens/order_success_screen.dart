@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:da_crust_app/data/model/order_details.dart';
+import 'package:da_crust_app/features/home/screens/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 
 import 'package:da_crust_app/core/utils/string_utils.dart';
-import 'package:da_crust_app/core/widgets/splash_screen.dart';
 import 'package:da_crust_app/features/payments/mixins/auto_redirect_timer_mixin.dart';
 import 'package:da_crust_app/features/payments/widgets/return_to_menu_button.dart';
 import 'package:da_crust_app/features/cart/state/cart_manager.dart';
@@ -41,7 +41,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   @override
   void initState() {
     super.initState();
-    hasAppInitialized = true;
+    hasWelcomeScreenInitialized = true;
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 3),
     );
@@ -324,7 +324,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                               countdown: countdown,
                               primaryColor: primaryColor,
                               onPressed: () {
-                                hasAppInitialized = true;
+                                hasWelcomeScreenInitialized = true;
                                 cancelAutoRedirectTimer(); 
                                 Navigator.of(context).pushNamedAndRemoveUntil(
                                   '/',
