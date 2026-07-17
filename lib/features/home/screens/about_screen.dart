@@ -1,3 +1,4 @@
+import 'package:da_crust_app/core/constants/app_assets.dart';
 import 'package:flutter/material.dart';
 
 class AboutScreen extends StatelessWidget {
@@ -20,7 +21,7 @@ class AboutScreen extends StatelessWidget {
         children: [
           // Background (same as Welcome screen)
           Image.asset(
-            'assets/images/pizza.png',
+            AppAssets.pizzaBackground,
             fit: BoxFit.cover,
           ),
 
