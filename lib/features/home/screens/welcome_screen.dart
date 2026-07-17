@@ -6,7 +6,7 @@ import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:flutter/material.dart';
 import 'package:da_crust_app/features/home/screens/home_screen.dart';
 
-bool hasWelcomeScreenInitialized = false;
+bool hasHomeScreenInitialized = false;
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -37,26 +37,24 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       duration: const Duration(milliseconds: 1200),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 0.78).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-
-    if (!hasWelcomeScreenInitialized) {
+    if (!hasHomeScreenInitialized) {
       _startSequence();
     } else {
+      // Already initialized before → skip animation
       restaurantData = RestaurantService.instance.cachedData;
       isDataLoading = false;
       showContent = true;
-      _fadeController.value = 0.78;
     }
   }
 
   Future<void> _startSequence() async {
     final dataFuture = RestaurantService.instance.fetchRestaurantData();
 
+    // Let background show first
     await Future.delayed(const Duration(milliseconds: 600));
     if (!mounted) return;
 
+    // Start fade animation
     await _fadeController.forward();
 
     final data = await dataFuture;
@@ -66,7 +64,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         restaurantData = data;
         isDataLoading = false;
         showContent = true;
-        hasWelcomeScreenInitialized = true;
+        _fadeController.value = 0.78;
       });
     }
   }
@@ -90,6 +88,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (hasHomeScreenInitialized) {
+      return const HomeScreen();
+    }
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 0.78).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+
     final welcomeImage = restaurantData?['welcomeImage'] as String?;
     final logo = restaurantData?['logo'] as String?;
     final name = restaurantData?['name'] ?? "Da Crust";
@@ -200,8 +206,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(
-                          maxWidth:
-                              920, // higher limit, looks good on desktop
+                          maxWidth: 920, // higher limit, looks good on desktop
                         ),
                         child: RoundedNetworkImage(
                           imageUrl: welcomeImage,
