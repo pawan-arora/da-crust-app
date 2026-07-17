@@ -22,18 +22,56 @@ class CheckoutViewModel extends ChangeNotifier {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
 
+  bool wantsSms = true;
+
   CheckoutViewModel()
-    : noteController = TextEditingController(
-        text: CartManager.instance.orderNote,
-      ) {
+      : noteController = TextEditingController(
+          text: CartManager.instance.orderNote,
+        ) {
+    _prefillCustomerDetails();
     _loadLocationData();
-    // Re-calculate totals if cart changes while on this screen
+
+    // Listen to cart changes
     CartManager.instance.addListener(notifyListeners);
+
+    // Auto-save customer details when user types
+    firstNameController.addListener(_saveCustomerDetails);
+    lastNameController.addListener(_saveCustomerDetails);
+    emailController.addListener(_saveCustomerDetails);
+    phoneController.addListener(_saveCustomerDetails);
+  }
+
+  /// Prefill form from CartManager (survives browser refresh)
+  void _prefillCustomerDetails() {
+    final cart = CartManager.instance;
+
+    firstNameController.text = cart.firstName;
+    lastNameController.text = cart.lastName;
+    emailController.text = cart.email;
+    phoneController.text = cart.phone;
+    wantsSms = cart.wantsSms;
+  }
+
+  /// Save current form values into CartManager
+  void _saveCustomerDetails() {
+    CartManager.instance.updateCustomerDetails(
+      firstName: firstNameController.text.trim(),
+      lastName: lastNameController.text.trim(),
+      email: emailController.text.trim(),
+      phone: phoneController.text.trim(),
+      wantsSms: wantsSms,
+    );
   }
 
   @override
   void dispose() {
     CartManager.instance.removeListener(notifyListeners);
+
+    firstNameController.removeListener(_saveCustomerDetails);
+    lastNameController.removeListener(_saveCustomerDetails);
+    emailController.removeListener(_saveCustomerDetails);
+    phoneController.removeListener(_saveCustomerDetails);
+
     noteController.dispose();
     firstNameController.dispose();
     lastNameController.dispose();
@@ -73,10 +111,9 @@ class CheckoutViewModel extends ChangeNotifier {
   double get finalTotal =>
       double.parse((subtotal + currentSurcharge).toStringAsFixed(2));
 
-  bool wantsSms = false;
-
   void toggleSmsPreference(bool value) {
     wantsSms = value;
+    _saveCustomerDetails(); // also save SMS preference
     notifyListeners();
   }
 
@@ -85,7 +122,9 @@ class CheckoutViewModel extends ChangeNotifier {
     isProcessing = true;
     notifyListeners();
 
-    // The CartManager now holds the time, we don't need a getter here!
+    // Make sure latest values are saved before submitting
+    _saveCustomerDetails();
+
     final result = await CheckoutService.startCheckoutFlow(
       currentOrderId: currentOrderId,
       firstName: firstNameController.text.trim(),

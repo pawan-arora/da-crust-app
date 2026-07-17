@@ -1,3 +1,4 @@
+import 'package:da_crust_app/core/constants/app_assets.dart';
 import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -125,7 +126,7 @@ class _RestaurantInfoDialogState extends State<RestaurantInfoDialog> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).primaryColor,
                   image: DecorationImage(
-                    image: const AssetImage('assets/images/pizza.png'),
+                    image: const AssetImage(AppAssets.pizzaBackground),
                     fit: BoxFit.cover,
                     colorFilter: ColorFilter.mode(
                       Colors.black.withAlpha(150),

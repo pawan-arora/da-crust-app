@@ -71,4 +71,6 @@ devtools_options.yaml
 
 linux/
 
-functions/
+functions/package-lock.json
+linux/
+macos/

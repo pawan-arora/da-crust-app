@@ -17,7 +17,7 @@ class _OrderFailedScreenState extends State<OrderFailedScreen>
   @override
   void initState() {
     super.initState();
-    hasWelcomeScreenInitialized = true;
+    hasHomeScreenInitialized = true;
     // 🌟 Start the timer as soon as the screen loads
     startAutoRedirectTimer(
       maxSeconds: 15,
@@ -112,7 +112,7 @@ class _OrderFailedScreenState extends State<OrderFailedScreen>
                     countdown: countdown,
                     primaryColor: primaryColor,
                     onPressed: () {
-                      hasWelcomeScreenInitialized = true;
+                      hasHomeScreenInitialized = true;
                       cancelAutoRedirectTimer(); // Stop timer if user clicks manually
                       Navigator.of(
                         context,

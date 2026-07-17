@@ -41,7 +41,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   @override
   void initState() {
     super.initState();
-    hasWelcomeScreenInitialized = true;
+    hasHomeScreenInitialized = true;
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 3),
     );
@@ -324,7 +324,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                               countdown: countdown,
                               primaryColor: primaryColor,
                               onPressed: () {
-                                hasWelcomeScreenInitialized = true;
+                                hasHomeScreenInitialized = true;
                                 cancelAutoRedirectTimer(); 
                                 Navigator.of(context).pushNamedAndRemoveUntil(
                                   '/',
