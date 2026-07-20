@@ -20,9 +20,13 @@ exports.stripeWebhook = functions.region("australia-southeast1").https.onRequest
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  // 🌟 1. Handle SUCCESS
   if (event.type === "checkout.session.completed") {
-    const orderId = event.data.object.metadata.orderId;
-    if (orderId) {
+    const orderId = event.data.object.metadata?.orderId;
+    
+    // Some payment methods require asynchronous confirmation.
+    // Only process if the payment is actually paid.
+    if (orderId && event.data.object.payment_status === "paid") {
       try {
         await processSuccessfulOrder(orderId, "Stripe");
       } catch (error) {
@@ -30,7 +34,31 @@ exports.stripeWebhook = functions.region("australia-southeast1").https.onRequest
         return res.status(500).send("Database processing error");
       }
     }
+
+  // 🌟 2. Handle FAILURES / EXPIRATIONS
+  } else if (
+    event.type === "checkout.session.expired" || 
+    event.type === "checkout.session.async_payment_failed"
+  ) {
+    const orderId = event.data.object.metadata?.orderId;
+    
+    if (orderId) {
+      console.log(`Stripe payment failed/expired for order: ${orderId}. Updating database...`);
+      try {
+        // Update the database to unlock the cart or show the user a failed state
+        await admin.firestore().collection("orders").doc(orderId).update({ 
+          status: "FAILED" 
+        });
+      } catch (error) {
+        console.error("Database error updating failed Stripe order:", error);
+        return res.status(500).send("Database processing error");
+      }
+    }
+  } else {
+    // Log ignored events purely for debugging visibility
+    console.log(`Stripe webhook ignored — type: ${event.type}`);
   }
+
   res.status(200).json({ received: true });
 });
 

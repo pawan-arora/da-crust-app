@@ -25,7 +25,6 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   String? _customerEmail;
   String? _customerPhone;
   
-  // 🌟 The UI only talks to the Service now
   final OrderDatabaseService _dbService = OrderDatabaseService();
 
   bool _isLoading = true;
@@ -34,8 +33,6 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   bool _hasProcessedSuccess = false;
 
   late ConfettiController _confettiController;
-  
-  // 🌟 Listening to clean OrderDetails, not raw Firebase snapshots
   StreamSubscription<OrderDetails>? _orderSubscription;
 
   @override
@@ -127,7 +124,6 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   Future<void> _verifyPaymentManually() async {
     setState(() => _isVerifying = true);
     try {
-      // 🌟 Clean Service Call
       final status = await _dbService.verifyEftposStatus(widget.orderId);
       
       if (status == 'PENDING' || status == 'CREATED' || status == null) {
@@ -152,211 +148,222 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
     final primaryColor = Colors.deepOrange.shade600;
     final backgroundColor = Colors.grey.shade50;
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-      ),
-      body: Stack(
-        children: [
-          _isLoading
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(color: primaryColor),
-                      const SizedBox(height: 24),
-                      const Text(
-                        "Confirming payment...",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Waiting for the bank to respond.",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-
-                      // 🌟 Polling Fallback UI
-                      if (_isTakingTooLong) ...[
-                        const SizedBox(height: 40),
-                        _isVerifying
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : OutlinedButton.icon(
-                                onPressed: _verifyPaymentManually,
-                                icon: const Icon(Icons.refresh),
-                                label: const Text("Still waiting? Verify Payment"),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: primaryColor,
-                                  side: BorderSide(color: primaryColor.withOpacity(0.5)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                ),
-                              ),
-                        const SizedBox(height: 16),
-                        TextButton(
-                          onPressed: () {
-                            cancelAutoRedirectTimer();
-                            _orderSubscription?.cancel();
-                            Navigator.of(context).pushNamedAndRemoveUntil('/failed', (route) => false);
-                          },
-                          child: Text(
-                            "Cancel Payment",
-                            style: TextStyle(color: Colors.red.shade400),
+    // 🌟 WRAP WITH PopScope TO CATCH BROWSER BACK BUTTON
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        hasHomeScreenInitialized = true;
+        cancelAutoRedirectTimer();
+        _orderSubscription?.cancel();
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      },
+      child: Scaffold(
+        backgroundColor: backgroundColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+        ),
+        body: Stack(
+          children: [
+            _isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: primaryColor),
+                        const SizedBox(height: 24),
+                        const Text(
+                          "Confirming payment...",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
-                    ],
-                  ),
-                )
-              : SafeArea(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 500),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24.0,
-                          vertical: 16.0,
+                        const SizedBox(height: 8),
+                        Text(
+                          "Waiting for the bank to respond.",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.check_circle_rounded,
-                                color: Colors.green.shade500,
-                                size: 72,
-                              ),
-                            ),
-                            const SizedBox(height: 32),
 
-                            const Text(
-                              'Order Confirmed!',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black87,
-                                letterSpacing: -0.5,
-                              ),
+                        // 🌟 Polling Fallback UI
+                        if (_isTakingTooLong) ...[
+                          const SizedBox(height: 40),
+                          _isVerifying
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : OutlinedButton.icon(
+                                  onPressed: _verifyPaymentManually,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text("Still waiting? Verify Payment"),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: primaryColor,
+                                    side: BorderSide(color: primaryColor.withOpacity(0.5)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  ),
+                                ),
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: () {
+                              cancelAutoRedirectTimer();
+                              _orderSubscription?.cancel();
+                              Navigator.of(context).pushNamedAndRemoveUntil('/failed', (route) => false);
+                            },
+                            child: Text(
+                              "Cancel Payment",
+                              style: TextStyle(color: Colors.red.shade400),
                             ),
-                            const SizedBox(height: 12),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                : SafeArea(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 500),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24.0,
+                            vertical: 16.0,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.check_circle_rounded,
+                                  color: Colors.green.shade500,
+                                  size: 72,
+                                ),
+                              ),
+                              const SizedBox(height: 32),
 
-                            Text(
-                              'Your food is being prepared by our kitchen.\nWe\'ve sent your complete order summary to your email and a quick confirmation text to your phone.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.grey.shade600,
-                                height: 1.5,
+                              const Text(
+                                'Order Confirmed!',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.black87,
+                                  letterSpacing: -0.5,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 40),
+                              const SizedBox(height: 12),
 
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.04),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
+                              Text(
+                                'Your food is being prepared by our kitchen.\nWe\'ve sent your complete order summary to your email and a quick confirmation text to your phone.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.grey.shade600,
+                                  height: 1.5,
+                                ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildDetailRow(
-                                    'Order Number',
-                                    '#${widget.orderId}',
-                                  ),
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 16),
-                                    child: Divider(height: 1),
-                                  ),
-                                  _buildDetailRow(
-                                    'Pickup Time',
-                                    _fetchedTime ?? "Processing...",
-                                    highlight: true,
-                                    accentColor: primaryColor,
-                                  ),
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 16),
-                                    child: Divider(height: 1),
-                                  ),
-                                  _buildDetailRow(
-                                    'Email',
-                                    _customerEmail ?? "Not provided",
-                                    isContactInfo: true,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _buildDetailRow(
-                                    'Phone',
-                                    StringUtils.formatNzPhoneNumber(
-                                          _customerPhone,
-                                        ) ??
-                                        "Not Provided",
-                                    isContactInfo: true,
-                                  ),
-                                ],
+                              const SizedBox(height: 40),
+
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.04),
+                                      blurRadius: 24,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildDetailRow(
+                                      'Order Number',
+                                      '#${widget.orderId}',
+                                    ),
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      child: Divider(height: 1),
+                                    ),
+                                    _buildDetailRow(
+                                      'Pickup Time',
+                                      _fetchedTime ?? "Processing...",
+                                      highlight: true,
+                                      accentColor: primaryColor,
+                                    ),
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      child: Divider(height: 1),
+                                    ),
+                                    _buildDetailRow(
+                                      'Email',
+                                      _customerEmail ?? "Not provided",
+                                      isContactInfo: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildDetailRow(
+                                      'Phone',
+                                      StringUtils.formatNzPhoneNumber(
+                                            _customerPhone,
+                                          ) ??
+                                          "Not Provided",
+                                      isContactInfo: true,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 48),
-                            ReturnToMenuButton(
-                              countdown: countdown,
-                              primaryColor: primaryColor,
-                              onPressed: () {
-                                hasHomeScreenInitialized = true;
-                                cancelAutoRedirectTimer(); 
-                                Navigator.of(context).pushNamedAndRemoveUntil(
-                                  '/',
-                                  (route) => false,
-                                );
-                              },
-                            ),
-                          ],
+                              const SizedBox(height: 48),
+                              ReturnToMenuButton(
+                                countdown: countdown,
+                                primaryColor: primaryColor,
+                                onPressed: () {
+                                  hasHomeScreenInitialized = true;
+                                  cancelAutoRedirectTimer(); 
+                                  Navigator.of(context).pushNamedAndRemoveUntil(
+                                    '/',
+                                    (route) => false,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              emissionFrequency: 0.05,
-              numberOfParticles: 50,
-              gravity: 0.1,
-              colors: const [
-                Colors.green,
-                Colors.blue,
-                Colors.pink,
-                Colors.orange,
-                Colors.amber,
-              ],
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirectionality: BlastDirectionality.explosive,
+                emissionFrequency: 0.05,
+                numberOfParticles: 50,
+                gravity: 0.1,
+                colors: const [
+                  Colors.green,
+                  Colors.blue,
+                  Colors.pink,
+                  Colors.orange,
+                  Colors.amber,
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

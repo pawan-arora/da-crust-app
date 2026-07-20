@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:da_crust_app/app_config.dart';
 import 'package:da_crust_app/core/routes/app_router.dart';
 import 'package:da_crust_app/core/theme/app_theme.dart';
+import 'package:da_crust_app/features/cart/state/cart_manager.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -32,6 +33,8 @@ void main() async {
   // Fetch the Store Settings from Firestore
   await AppConfig.instance.init();
 
+  await CartManager.instance.initialize();
+  
   // Run the App
   runApp(const MyApp());
 }

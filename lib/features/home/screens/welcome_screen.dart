@@ -271,6 +271,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 text: "ORDER NOW",
                                 isPrimary: true,
                                 onTap: () {
+                                  hasHomeScreenInitialized = true;
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(

@@ -24,8 +24,11 @@ exports.buildSmsString = (orderData) => {
     });
   }
 
-  // Keep the core info at the front
-  return `Da Crust: Order #${orderData.orderId} confirmed! Pickup: ${timeString}. Total: $${orderData.totalAmount}. Items: ${smsItemsString}`;
+  // Extract just the first name to keep the SMS concise, fallback to 'there' if missing
+  const firstName = orderData.customerName ? orderData.customerName.split(' ')[0] : 'there';
+
+  // Return the updated string with the thank you and email notification
+  return `Da Crust: Thanks ${firstName}! Order ${orderData.orderId} confirmed. Pickup: ${timeString}. Total: ${orderData.totalAmount}. Items: ${smsItemsString}. Details sent to your email.`;
 };
 
 // Add this below your existing buildSmsString function
@@ -53,5 +56,5 @@ exports.buildOwnerSmsString = (orderData) => {
   }
 
   // Packs Customer Name, Phone, Pickup Time, and Items into the SMS
-  return `🚨 NEW ORDER #${orderData.orderId}! Pickup: ${timeString}. Customer: ${orderData.customerName} (${orderData.customerPhone}). Items: ${smsItemsString}`;
+  return `🚨 NEW ORDER ${orderData.orderId}! Pickup: ${timeString}. Customer: ${orderData.customerName} (${orderData.customerPhone}). Items: ${smsItemsString}`;
 };

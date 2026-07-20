@@ -5,6 +5,9 @@ import 'package:da_crust_app/features/home/widgets/order_time_selector.dart';
 import 'package:da_crust_app/features/payments/widgets/payment_summary_column.dart';
 import 'package:flutter/material.dart';
 
+// 🌟 Import global flag for routing
+import 'package:da_crust_app/features/home/screens/welcome_screen.dart';
+
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -13,7 +16,6 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  // 🌟 The only state this screen needs is the ViewModel!
   late final CheckoutViewModel _viewModel;
 
   @override
@@ -26,6 +28,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void dispose() {
     _viewModel.dispose();
     super.dispose();
+  }
+
+  // 🌟 Handle custom routing back to the base domain
+  void _goBackToHome(BuildContext context) {
+    // SAFEGUARD: Prevent leaving if Stripe/Paymark is generating a session
+    if (_viewModel.isProcessing) return; 
+
+    hasHomeScreenInitialized = true;
+    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
   }
 
   void _handleCheckout() async {
@@ -49,70 +60,83 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        title: const Text(
-          "Secure Checkout",
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+    // 🌟 WRAPPER: PopScope intercepts hardware/browser back buttons
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // SAFEGUARD: Only go back if we aren't currently processing a payment
+        if (!_viewModel.isProcessing) {
+          _goBackToHome(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade100,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 1,
+          // 🌟 Custom back button for the AppBar (hides during processing)
+          leading: _viewModel.isProcessing 
+              ? const SizedBox.shrink() 
+              : IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => _goBackToHome(context),
+                ),
+          title: const Text(
+            "Secure Checkout",
+            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          ),
+          iconTheme: const IconThemeData(color: Colors.black87),
         ),
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      // 🌟 Listen to the ViewModel to rebuild the UI when math/state changes
-      body: ListenableBuilder(
-        listenable: _viewModel,
-        builder: (context, _) {
-          if (CartManager.instance.items.isEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (Navigator.canPop(context)) Navigator.pop(context);
-            });
-            return const Center(child: CircularProgressIndicator());
-          }
+        body: ListenableBuilder(
+          listenable: _viewModel,
+          builder: (context, _) {
+            // Note: Ensure CartManager.instance.loadSavedState() is called in main.dart
+            // if you uncomment your empty cart redirect logic here.
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              bool isDesktop = constraints.maxWidth > 900;
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                bool isDesktop = constraints.maxWidth > 900;
 
-              if (isDesktop) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(vertical: 40.0),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1200),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 6,
-                              child: _buildDetailsColumn(context),
-                            ),
-                            const SizedBox(width: 24),
-                            Expanded(flex: 4, child: _buildPaymentSummary()),
-                          ],
+                if (isDesktop) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(vertical: 40.0),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1200),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 6,
+                                child: _buildDetailsColumn(context),
+                              ),
+                              const SizedBox(width: 24),
+                              Expanded(flex: 4, child: _buildPaymentSummary()),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              } else {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      _buildDetailsColumn(context),
-                      const SizedBox(height: 24),
-                      _buildPaymentSummary(),
-                    ],
-                  ),
-                );
-              }
-            },
-          );
-        },
+                  );
+                } else {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        _buildDetailsColumn(context),
+                        const SizedBox(height: 24),
+                        _buildPaymentSummary(),
+                      ],
+                    ),
+                  );
+                }
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -138,13 +162,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         const SizedBox(height: 32),
 
         const Text(
-          "Special Instructions",
+          "Special Instructions (Optional)",
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         CustomTextField(
           controller: _viewModel.noteController,
-          labelText: "Special Instructions",
+          labelText: "",
           hintText: "E.g. No onions, extra spicy, allergies...",
           isRequired: false,
           minLines: 3,
@@ -217,23 +241,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 value: _viewModel.wantsSms,
                 onChanged: _viewModel.toggleSmsPreference,
                 contentPadding: EdgeInsets.zero,
-
-                // 🌟 REPLACES activeColor: Controls the circular knob color
                 thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
                   if (states.contains(WidgetState.selected)) {
-                    return Theme.of(context).primaryColor; // Color when ON
+                    return Theme.of(context).primaryColor;
                   }
-                  return Colors.grey.shade400; // Color when OFF
+                  return Colors.grey.shade400;
                 }),
-
-                // 🌟 (Optional) Controls the pill-shaped background track
                 trackColor: WidgetStateProperty.resolveWith<Color>((states) {
                   if (states.contains(WidgetState.selected)) {
-                    return Theme.of(
-                      context,
-                    ).primaryColor.withValues(alpha: 0.4); // Track when ON
+                    return Theme.of(context).primaryColor.withValues(alpha: 0.4);
                   }
-                  return Colors.grey.shade300; // Track when OFF
+                  return Colors.grey.shade300;
                 }),
               ),
             ],
@@ -306,8 +324,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      // Using a nested ListenableBuilder here specifically for the time
-                      // so we don't repaint the whole form when just the time changes!
                       child: ListenableBuilder(
                         listenable: CartManager.instance,
                         builder: (context, _) {

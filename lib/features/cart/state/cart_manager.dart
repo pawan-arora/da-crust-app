@@ -22,12 +22,17 @@ class CartManager extends ChangeNotifier {
   List<CartItem> _items = [];
   List<CartItem> get items => _items;
 
-  int get totalItemCount => _items.fold(0, (sum, item) => sum + item.quantity);
+  int get totalItemCount =>
+      _items.fold(0, (sums, item) => sums + item.quantity);
   double get totalCartPrice =>
-      _items.fold(0, (sum, item) => sum + item.totalPrice);
+      _items.fold(0, (sums, item) => sums + item.totalPrice);
 
   CartManager._internal() {
-    _loadCart();
+    //_loadCart();
+  }
+
+  Future<void> initialize() async {
+    await _loadCart();
   }
 
   // ========== Scheduled Time ==========
@@ -45,10 +50,12 @@ class CartManager extends ChangeNotifier {
 
   // ========== Add Item ==========
   void addItem(MenuItem item, {int quantity = 1, String? size, String? spice}) {
-    final existingIndex = _items.indexWhere((i) =>
-        i.item.menuId == item.menuId &&
-        i.selectedSize == size &&
-        i.selectedSpice == spice);
+    final existingIndex = _items.indexWhere(
+      (i) =>
+          i.item.menuId == item.menuId &&
+          i.selectedSize == size &&
+          i.selectedSpice == spice,
+    );
 
     double snapshotPrice = item.price ?? 0.0;
 
@@ -82,6 +89,12 @@ class CartManager extends ChangeNotifier {
   void updateOrderNote(String newNote) {
     orderNote = newNote;
     notifyListeners();
+    _saveOrderNote();
+  }
+
+  Future<void> _saveOrderNote() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('order_note', orderNote);
   }
 
   // ========== Quantity ==========
@@ -140,8 +153,9 @@ class CartManager extends ChangeNotifier {
   // ========== Save / Load Cart ==========
   Future<void> _saveCart() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encodedData =
-        jsonEncode(_items.map((e) => e.toMap()).toList());
+    final String encodedData = jsonEncode(
+      _items.map((e) => e.toMap()).toList(),
+    );
     await prefs.setString('saved_cart', encodedData);
   }
 
@@ -150,7 +164,7 @@ class CartManager extends ChangeNotifier {
     final savedData = prefs.getString('saved_cart');
 
     currentOrderId = prefs.getString('pending_order_id');
-
+    orderNote = prefs.getString('order_note') ?? "";
     // Load customer details
     await _loadCustomerDetails();
 
@@ -206,5 +220,6 @@ class CartManager extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('pending_order_id');
+    await prefs.remove('order_note');
   }
 }

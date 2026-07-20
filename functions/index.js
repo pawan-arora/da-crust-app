@@ -61,7 +61,7 @@ exports.createCheckoutSession = functions.region("australia-southeast1").https.o
       }],
       mode: "payment",
       success_url: `${DOMAIN}/#/success?orderId=${orderId}`,
-      cancel_url: `${DOMAIN}/#/failed`,
+      cancel_url: `${DOMAIN}/#/checkout`,
       metadata: { orderId: orderId },
     });
 
