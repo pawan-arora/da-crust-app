@@ -40,8 +40,10 @@ class _ModernCarouselState extends State<ModernCarousel> {
 
   void _scrollListener() => _updateButtonVisibility();
 
-  void _updateButtonVisibility() {
-    if (!_scrollController.hasClients) return;
+ void _updateButtonVisibility() {
+    // 🌟 THE FIX: Also check if Flutter has finished calculating the layout sizes!
+    if (!_scrollController.hasClients || !_scrollController.position.hasContentDimensions) return;
+
     final showLeft = _scrollController.offset > 0;
     final showRight = _scrollController.offset < _scrollController.position.maxScrollExtent;
 
@@ -54,7 +56,7 @@ class _ModernCarouselState extends State<ModernCarousel> {
   }
 
   void _scroll(int direction) {
-    if (!_scrollController.hasClients) return;
+    if (!_scrollController.hasClients || !_scrollController.position.hasContentDimensions) return;
     final targetPosition = (_scrollController.offset + (widget.scrollAmount * direction))
         .clamp(0.0, _scrollController.position.maxScrollExtent);
 

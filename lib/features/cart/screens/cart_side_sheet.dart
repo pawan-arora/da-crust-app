@@ -1,6 +1,5 @@
 import 'package:da_crust_app/core/utils/date_time_utils.dart';
 import 'package:da_crust_app/data/model/cart_item.dart';
-import 'package:da_crust_app/features/cart/screens/checkout_screen.dart';
 import 'package:da_crust_app/features/cart/state/cart_manager.dart';
 import 'package:da_crust_app/features/cart/widgets/custom_text_field.dart';
 import 'package:da_crust_app/features/menu/widgets/safe_menu_image.dart';
@@ -520,7 +519,6 @@ class _CartSideSheetState extends State<CartSideSheet> {
                 ),
                 onPressed: () {
                   Navigator.pop(context);
-
                  // final time = CartManager.instance.scheduledTime;
                   // String finalFormattedTime = "ASAP";
 
@@ -535,12 +533,7 @@ class _CartSideSheetState extends State<CartSideSheet> {
                   // }
                   CartManager.instance.updateOrderNote(_noteController.text);
                   // 3. Slide over to the new full-page Checkout Screen
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CheckoutScreen(),
-                    ),
-                  );
+                  Navigator.pushNamed(context, '/checkout');
                 },
                 child: const Text(
                   "Checkout",

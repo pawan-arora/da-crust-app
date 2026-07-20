@@ -90,6 +90,7 @@ class CheckoutViewModel extends ChangeNotifier {
     final data = await RestaurantService.instance.fetchRestaurantData();
     if (data != null) {
       restaurantName = data['name'] ?? "Da Crust Pizzeria & Indian Takeaways";
+      wantsSms = data['wantsSms'] ?? true; // Default to true if not specified
       final addressMap = data['address'] as Map<String, dynamic>? ?? {};
       final street = addressMap['street'] ?? "20 Diana Street";
       final city = addressMap['city'] ?? "Lumsden";
