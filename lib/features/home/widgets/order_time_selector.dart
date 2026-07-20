@@ -1,5 +1,6 @@
+import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:flutter/material.dart';
-import 'package:da_crust_app/core/utils/date_time_utils.dart'; // Adjust path as needed
+import 'package:da_crust_app/core/utils/date_time_utils.dart';
 
 class OrderTimeSelector extends StatelessWidget {
   final DateTime? scheduledTime;
@@ -12,20 +13,37 @@ class OrderTimeSelector extends StatelessWidget {
   });
 
   Future<void> _pickDateTime(BuildContext context) async {
-    final now = DateTime.now(); 
+    final now = DateTime.now();
     final minAllowedTime = now.add(const Duration(minutes: 15));
+    
+    final hoursMap = RestaurantService.instance.openingHours;
+    DateTime firstAvailableDate = DateTime(now.year, now.month, now.day);
+    
+    // Check if today is open. If so, calculate closing time to see if we missed it.
+    if (DateTimeUtils.isDayOpen(now.weekday, hoursMap)) {
+      final todayMinutes = DateTimeUtils.getDynamicOperatingMinutes(now.weekday, hoursMap);
+      final todayClosingTime = DateTime(
+        now.year, now.month, now.day,
+        todayMinutes['close']! ~/ 60,
+        todayMinutes['close']! % 60
+      );
 
-    final todayClosingTime = DateTime(now.year, now.month, now.day, 21, 30); 
-    DateTime firstAvailableDate = DateTime(now.year, now.month, now.day); 
-
-    // If adding 15 mins pushes us past 9:30 PM, today is no longer an option. Jump to tomorrow.
-    if (minAllowedTime.isAfter(todayClosingTime)) {
+      if (minAllowedTime.isAfter(todayClosingTime)) {
+        firstAvailableDate = now.add(const Duration(days: 1));
+        firstAvailableDate = DateTime(firstAvailableDate.year, firstAvailableDate.month, firstAvailableDate.day);
+      }
+    } else {
+      // If today is closed entirely, start looking from tomorrow
       firstAvailableDate = now.add(const Duration(days: 1));
       firstAvailableDate = DateTime(firstAvailableDate.year, firstAvailableDate.month, firstAvailableDate.day);
     }
 
-    // Explicitly typed as DateTime to prevent TZDateTime mismatch errors
-    DateTime smartDefaultTime = DateTimeUtils.getDefaultPickupTime();
+    // Ensure firstAvailableDate lands on a day the store is ACTUALLY open
+    while (!DateTimeUtils.isDayOpen(firstAvailableDate.weekday, hoursMap)) {
+      firstAvailableDate = firstAvailableDate.add(const Duration(days: 1));
+    }
+
+    DateTime smartDefaultTime = DateTimeUtils.getDynamicDefaultPickupTime(hoursMap);
     if (smartDefaultTime.isBefore(firstAvailableDate)) {
       smartDefaultTime = firstAvailableDate;
     }
@@ -34,14 +52,18 @@ class OrderTimeSelector extends StatelessWidget {
     // --- Pick the Date ---
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: initialDateToShow, 
-      firstDate: firstAvailableDate, 
-      lastDate: firstAvailableDate.add(const Duration(days: 7)), 
+      initialDate: initialDateToShow,
+      firstDate: firstAvailableDate,
+      lastDate: firstAvailableDate.add(const Duration(days: 7)),
+      // THIS DISABLES CLOSED DAYS IN THE CALENDAR UI
+      selectableDayPredicate: (DateTime day) {
+        return DateTimeUtils.isDayOpen(day.weekday, hoursMap);
+      },
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
-              primary: Theme.of(context).primaryColor, 
+              primary: Theme.of(context).primaryColor,
             ),
           ),
           child: child!,
@@ -54,31 +76,29 @@ class OrderTimeSelector extends StatelessWidget {
       final pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay(
-          hour: initialDateToShow.hour, 
+          hour: initialDateToShow.hour,
           minute: initialDateToShow.minute
-        ), 
+        ),
       );
 
       if (pickedTime != null && context.mounted) {
         final selectedDateTime = DateTime(
-          pickedDate.year, pickedDate.month, pickedDate.day, 
+          pickedDate.year, pickedDate.month, pickedDate.day,
           pickedTime.hour, pickedTime.minute,
         );
 
-        // --- VALIDATION LAYER ---
-
-        // Validation 1: Explicit Past Time Check (MUST BE FIRST)
+        // Validation 1: Explicit Past Time Check
         if (selectedDateTime.isBefore(now)) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text("You cannot select a time in the past.", 
+              content: const Text("You cannot select a time in the past.",
                 style: TextStyle(fontWeight: FontWeight.w600)),
-              backgroundColor: Colors.red.shade600, 
+              backgroundColor: Colors.red.shade600,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 4),
             ),
           );
-          return; // Stop execution here
+          return;
         }
 
         // Validation 2: 15-Minute Prep Time Check
@@ -88,34 +108,54 @@ class OrderTimeSelector extends StatelessWidget {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Please allow at least 15 mins for prep. Earliest time is $formattedMinTime.", 
+              content: Text("Please allow at least 15 mins for prep. Earliest time is $formattedMinTime.",
                 style: const TextStyle(fontWeight: FontWeight.w600)),
-              backgroundColor: Colors.red.shade600, 
+              backgroundColor: Colors.red.shade600,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 4),
             ),
           );
-          return; // Stop execution here
+          return;
         }
 
-        // Validation 3: Standard Operating Hours Check (LAST)
-        if (!DateTimeUtils.isWithinOperatingHours(pickedDate, pickedTime)) {
-          final openStr = pickedDate.weekday == DateTime.monday ? "4:00 PM" : "11:00 AM";
+        // Validation 3: Standard Operating Hours Check using DYNAMIC method
+        if (!DateTimeUtils.isWithinDynamicOperatingHours(pickedDate, pickedTime, hoursMap)) {
+          
+          if (!DateTimeUtils.isDayOpen(pickedDate.weekday, hoursMap)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text("Sorry, we are closed on this day.",
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+                backgroundColor: Colors.red.shade600,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+            return;
+          }
+
+          final dayStr = DateTimeUtils.getDayString(pickedDate.weekday);
+          final dayData = hoursMap?[dayStr];
+          
+          final fallbackOpenStr = pickedDate.weekday == DateTime.monday ? "4:00 PM" : "11:00 AM";
+          final openStr = DateTimeUtils.formatTimeString(dayData?['open'] as String?, fallback: fallbackOpenStr);
+          final closeStr = DateTimeUtils.formatTimeString(dayData?['close'] as String?, fallback: "9:30 PM");
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Please select a time between $openStr and 9:30 PM.", 
+              content: Text("Please select a time between $openStr and $closeStr.",
                 style: const TextStyle(fontWeight: FontWeight.w600)),
-              backgroundColor: Colors.red.shade600, 
+              backgroundColor: Colors.red.shade600,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 4),
             ),
           );
-          return; // Stop execution here
+          return;
         }
 
         // If all 3 validations pass, schedule the time!
         final newTime = DateTimeUtils.createNzTime(
-          pickedDate.year, pickedDate.month, pickedDate.day, 
+          pickedDate.year, pickedDate.month, pickedDate.day,
           pickedTime.hour, pickedTime.minute,
         );
         onTimeChanged(newTime);
@@ -125,7 +165,8 @@ class OrderTimeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayTime = scheduledTime ?? DateTimeUtils.getDefaultPickupTime();
+    final hoursMap = RestaurantService.instance.openingHours;
+    final displayTime = scheduledTime ?? DateTimeUtils.getDynamicDefaultPickupTime(hoursMap);
 
     return InkWell(
       onTap: () => _pickDateTime(context),

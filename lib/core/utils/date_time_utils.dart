@@ -222,4 +222,138 @@ class DateTimeUtils {
     }
     return null;
   }
+
+  // =======================================================================
+  // --- 8. NEW: Dynamic Time Methods for OrderTimeSelector (SAFE ADDITIONS)
+  // =======================================================================
+
+  static const List<String> _weekdaysMap = [
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ];
+
+  static String getDayString(int weekday) => _weekdaysMap[weekday - 1];
+
+  /// Checks if the day exists in the database map. Missing means closed.
+  static bool isDayOpen(int weekday, Map<String, dynamic>? hoursMap) {
+    if (hoursMap == null || hoursMap.isEmpty)
+      return true; // Fallback if DB fetch fails
+    final dayStr = getDayString(weekday);
+    return hoursMap.containsKey(dayStr);
+  }
+
+  /// Gets dynamic minutes from map, falls back to old logic if map is null/missing
+  static Map<String, int> getDynamicOperatingMinutes(
+    int weekday,
+    Map<String, dynamic>? hoursMap,
+  ) {
+    int openMins = getOpeningHour(weekday) * 60;
+    int closeMins = getClosingHour() * 60 + getClosingMinute();
+
+    if (hoursMap != null) {
+      final dayStr = getDayString(weekday);
+      final dayData = hoursMap[dayStr];
+      if (dayData != null) {
+        if (dayData['open'] != null) {
+          final openParts = (dayData['open'] as String).split(':');
+          openMins = int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
+        }
+        if (dayData['close'] != null) {
+          final closeParts = (dayData['close'] as String).split(':');
+          closeMins = int.parse(closeParts[0]) * 60 + int.parse(closeParts[1]);
+        }
+      }
+    }
+    return {'open': openMins, 'close': closeMins};
+  }
+
+  /// Scans up to 7 days ahead to find the very next time the store is open
+  static tz.TZDateTime getDynamicDefaultPickupTime(
+    Map<String, dynamic>? hoursMap,
+  ) {
+    final nzNow = getNzTime();
+
+    // Check up to 7 days forward to find an open day
+    for (int offset = 0; offset < 7; offset++) {
+      final checkDate = nzNow.add(Duration(days: offset));
+      final isTodayInLoop = (offset == 0);
+
+      if (isDayOpen(checkDate.weekday, hoursMap)) {
+        final opMinutes = getDynamicOperatingMinutes(
+          checkDate.weekday,
+          hoursMap,
+        );
+        final openTotalMinutes = opMinutes['open']!;
+        final closeTotalMinutes = opMinutes['close']!;
+
+        if (isTodayInLoop) {
+          final currentTotalMinutes = nzNow.hour * 60 + nzNow.minute;
+
+          if (currentTotalMinutes >= closeTotalMinutes) {
+            // Store closed for today, let the loop move to tomorrow
+            continue;
+          } else if (currentTotalMinutes < openTotalMinutes) {
+            // Early morning, store opens later today
+            return createNzTime(
+              checkDate.year,
+              checkDate.month,
+              checkDate.day,
+              openTotalMinutes ~/ 60,
+              openTotalMinutes % 60,
+            );
+          } else {
+            // Open right now!
+            return nzNow.add(const Duration(minutes: 15));
+          }
+        } else {
+          // This is a future day. Return its exact opening time.
+          return createNzTime(
+            checkDate.year,
+            checkDate.month,
+            checkDate.day,
+            openTotalMinutes ~/ 60,
+            openTotalMinutes % 60,
+          );
+        }
+      }
+    }
+
+    // Absolute fallback if map is fully empty/corrupt
+    return nzNow.add(const Duration(minutes: 15));
+  }
+
+  static bool isWithinDynamicOperatingHours(
+    DateTime pickedDate,
+    TimeOfDay pickedTime,
+    Map<String, dynamic>? hoursMap,
+  ) {
+    // If the day is completely missing from DB, it's not operating.
+    if (!isDayOpen(pickedDate.weekday, hoursMap)) return false;
+
+    final pickedTotalMinutes = pickedTime.hour * 60 + pickedTime.minute;
+    final opMinutes = getDynamicOperatingMinutes(pickedDate.weekday, hoursMap);
+
+    if (pickedTotalMinutes < opMinutes['open']! ||
+        pickedTotalMinutes >= opMinutes['close']!) {
+      return false;
+    }
+    return true;
+  }
+
+  static String formatTimeString(String? timeStr, {required String fallback}) {
+    if (timeStr == null) return fallback;
+    final parts = timeStr.split(':');
+    if (parts.length != 2) return fallback;
+
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = parts[1];
+    final ampm = h >= 12 ? "PM" : "AM";
+    final hr12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    return "$hr12:$m $ampm";
+  }
 }
