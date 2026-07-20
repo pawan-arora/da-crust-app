@@ -81,8 +81,7 @@ class RestaurantService {
   }
 
   Future<Map<String, dynamic>?> fetchOpeningHours() async {
-  final data = await fetchRestaurantData();
-  return data?['openingHourse'] as Map<String, dynamic>?;
+    final data = await fetchRestaurantData();
+    return data?['openingHourse'] as Map<String, dynamic>?;
+  }
 }
-}
-
