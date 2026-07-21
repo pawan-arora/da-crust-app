@@ -22,12 +22,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void initState() {
     super.initState();
     _viewModel = CheckoutViewModel();
+    
+    // 🌟 ADDED: Listen to the cart to detect when it becomes empty
+    CartManager.instance.addListener(_onCartChanged);
   }
 
   @override
   void dispose() {
+    // 🌟 ADDED: Clean up the listener to prevent memory leaks
+    CartManager.instance.removeListener(_onCartChanged);
     _viewModel.dispose();
     super.dispose();
+  }
+
+  // 🌟 ADDED: Logic to automatically go back if the cart is emptied
+  void _onCartChanged() {
+    if (CartManager.instance.items.isEmpty && mounted) {
+      _goBackToHome(context);
+    }
   }
 
   // 🌟 Handle custom routing back to the base domain
@@ -91,9 +103,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         body: ListenableBuilder(
           listenable: _viewModel,
           builder: (context, _) {
-            // Note: Ensure CartManager.instance.loadSavedState() is called in main.dart
-            // if you uncomment your empty cart redirect logic here.
-
             return LayoutBuilder(
               builder: (context, constraints) {
                 bool isDesktop = constraints.maxWidth > 900;
