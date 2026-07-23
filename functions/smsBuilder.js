@@ -56,5 +56,5 @@ exports.buildOwnerSmsString = (orderData) => {
   }
 
   // Packs Customer Name, Phone, Pickup Time, and Items into the SMS
-  return `🚨 NEW ORDER ${orderData.orderId}! Pickup: ${timeString}. Customer: ${orderData.customerName} (${orderData.customerPhone}). Items: ${smsItemsString}`;
+  return `NEW ORDER: ${orderData.orderId}! Pickup: ${timeString}. Customer: ${orderData.customerName} (${orderData.customerPhone}). Items: ${smsItemsString}`;
 };
