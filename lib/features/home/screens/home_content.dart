@@ -2,6 +2,7 @@ import 'package:da_crust_app/core/constants/app_assets.dart';
 import 'package:da_crust_app/data/model/menu_item.dart';
 import 'package:da_crust_app/features/cart/state/cart_manager.dart';
 import 'package:da_crust_app/features/cart/widgets/cart_icon_with_badge.dart';
+import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:da_crust_app/features/home/widgets/bestsellers_section.dart';
 import 'package:da_crust_app/features/home/widgets/restaurant_info_dialog.dart';
 import 'package:da_crust_app/features/menu/widgets/category_chips.dart';
@@ -168,7 +169,7 @@ class _HomeContentState extends State<HomeContent> {
                                 );
                               },
                               child: Text(
-                                "Da Crust Pizzeria & Indian Takeaways",
+                                RestaurantService.instance.name,
                                 style: TextStyle(
                                   fontSize: isMobile ? 16 : 22,
                                   fontWeight: FontWeight.bold,
