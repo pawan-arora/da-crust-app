@@ -11,6 +11,43 @@ class DateTimeUtils {
     return tz.TZDateTime.now(_nz);
   }
 
+  static List<TimeOfDay> generateTimeSlots(
+    tz.TZDateTime date,
+    Map<String, dynamic>? hoursMap,
+    tz.TZDateTime minAllowedTime,
+  ) {
+    final minutes =
+        DateTimeUtils.getDynamicOperatingMinutes(date.weekday, hoursMap);
+    final openMinutes = minutes['open']!;
+    final closeMinutes = minutes['close']!;
+    final lastAllowed = closeMinutes - 15;
+
+    if (lastAllowed < openMinutes) return [];
+
+    final slots = <TimeOfDay>[];
+    int current = openMinutes;
+
+    while (current <= lastAllowed) {
+      final hour = current ~/ 60;
+      final minute = current % 60;
+      final slotDt = DateTimeUtils.createNzTime(
+        date.year, date.month, date.day, hour, minute,
+      );
+
+      final isToday = date.year == minAllowedTime.year &&
+          date.month == minAllowedTime.month &&
+          date.day == minAllowedTime.day;
+
+      if (isToday && slotDt.isBefore(minAllowedTime)) {
+        current += 15;
+        continue;
+      }
+
+      slots.add(TimeOfDay(hour: hour, minute: minute));
+      current += 15;
+    }
+    return slots;
+  }
   // --- 2. Helper to create a pure NZ Date Object ---
   static tz.TZDateTime createNzTime(
     int year,

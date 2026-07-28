@@ -1,6 +1,8 @@
 import 'package:da_crust_app/features/home/services/restaurant_service.dart';
+import 'package:da_crust_app/features/home/widgets/pickup_time_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:da_crust_app/core/utils/date_time_utils.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class OrderTimeSelector extends StatelessWidget {
   final DateTime? scheduledTime;
@@ -12,164 +14,102 @@ class OrderTimeSelector extends StatelessWidget {
     required this.onTimeChanged,
   });
 
-  Future<void> _pickDateTime(BuildContext context) async {
-    final now = DateTime.now();
-    final minAllowedTime = now.add(const Duration(minutes: 15));
-    
+  Future<void> _openPicker(BuildContext context) async {
     final hoursMap = RestaurantService.instance.openingHours;
-    DateTime firstAvailableDate = DateTime(now.year, now.month, now.day);
-    
-    // Check if today is open. If so, calculate closing time to see if we missed it.
-    if (DateTimeUtils.isDayOpen(now.weekday, hoursMap)) {
-      final todayMinutes = DateTimeUtils.getDynamicOperatingMinutes(now.weekday, hoursMap);
-      final todayClosingTime = DateTime(
-        now.year, now.month, now.day,
-        todayMinutes['close']! ~/ 60,
-        todayMinutes['close']! % 60
-      );
+    final nzNow = DateTimeUtils.getNzTime();
+    final minAllowedTime = nzNow.add(const Duration(minutes: 15));
 
-      if (minAllowedTime.isAfter(todayClosingTime)) {
-        firstAvailableDate = now.add(const Duration(days: 1));
-        firstAvailableDate = DateTime(firstAvailableDate.year, firstAvailableDate.month, firstAvailableDate.day);
+    // Build list of next open days (max 7) using NZ time
+    final availableDates = <tz.TZDateTime>[];
+    var cursor = tz.TZDateTime(nzNow.location, nzNow.year, nzNow.month, nzNow.day);
+
+    // If today has no remaining slots, start from tomorrow
+    if (DateTimeUtils.isDayOpen(cursor.weekday, hoursMap)) {
+      final slotsToday = DateTimeUtils.generateTimeSlots(cursor, hoursMap, minAllowedTime);
+      if (slotsToday.isEmpty) {
+        cursor = cursor.add(const Duration(days: 1));
       }
     } else {
-      // If today is closed entirely, start looking from tomorrow
-      firstAvailableDate = now.add(const Duration(days: 1));
-      firstAvailableDate = DateTime(firstAvailableDate.year, firstAvailableDate.month, firstAvailableDate.day);
+      cursor = cursor.add(const Duration(days: 1));
     }
 
-    // Ensure firstAvailableDate lands on a day the store is ACTUALLY open
-    while (!DateTimeUtils.isDayOpen(firstAvailableDate.weekday, hoursMap)) {
-      firstAvailableDate = firstAvailableDate.add(const Duration(days: 1));
+    int safety = 0;
+    while (availableDates.length < 7 && safety < 14) {
+      if (DateTimeUtils.isDayOpen(cursor.weekday, hoursMap)) {
+        final slots = DateTimeUtils.generateTimeSlots(cursor, hoursMap, minAllowedTime);
+        if (slots.isNotEmpty) {
+          availableDates.add(cursor);
+        }
+      }
+      cursor = cursor.add(const Duration(days: 1));
+      safety++;
     }
 
-    DateTime smartDefaultTime = DateTimeUtils.getDynamicDefaultPickupTime(hoursMap);
-    if (smartDefaultTime.isBefore(firstAvailableDate)) {
-      smartDefaultTime = firstAvailableDate;
+    if (availableDates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No available pickup times right now.")),
+      );
+      return;
     }
-    final initialDateToShow = scheduledTime ?? smartDefaultTime;
 
-    // --- Pick the Date ---
-    final pickedDate = await showDatePicker(
+    // Pre-select
+    tz.TZDateTime selectedDate = availableDates.first;
+    if (scheduledTime != null) {
+      final match = availableDates.where((d) =>
+          d.year == scheduledTime!.year &&
+          d.month == scheduledTime!.month &&
+          d.day == scheduledTime!.day);
+      if (match.isNotEmpty) selectedDate = match.first;
+    }
+
+    TimeOfDay? selectedTime;
+    if (scheduledTime != null) {
+      selectedTime = TimeOfDay(
+        hour: scheduledTime!.hour,
+        minute: scheduledTime!.minute,
+      );
+    }
+
+    await showDialog(
       context: context,
-      initialDate: initialDateToShow,
-      firstDate: firstAvailableDate,
-      lastDate: firstAvailableDate.add(const Duration(days: 7)),
-      // THIS DISABLES CLOSED DAYS IN THE CALENDAR UI
-      selectableDayPredicate: (DateTime day) {
-        return DateTimeUtils.isDayOpen(day.weekday, hoursMap);
-      },
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Theme.of(context).primaryColor,
+      barrierColor: Colors.black54,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 36),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 370, maxHeight: 480),
+            child: PickupTimeSheet(
+              availableDates: availableDates,
+              initialDate: selectedDate,
+              initialTime: selectedTime,
+              minAllowedTime: minAllowedTime,
+              hoursMap: hoursMap,
+              onConfirm: (date, time) {
+                final newTime = DateTimeUtils.createNzTime(
+                  date.year,
+                  date.month,
+                  date.day,
+                  time.hour,
+                  time.minute,
+                );
+                onTimeChanged(newTime);
+              },
             ),
           ),
-          child: child!,
         );
       },
     );
-
-    if (pickedDate != null && context.mounted) {
-      // --- Pick the Time ---
-      final pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay(
-          hour: initialDateToShow.hour,
-          minute: initialDateToShow.minute
-        ),
-      );
-
-      if (pickedTime != null && context.mounted) {
-        final selectedDateTime = DateTime(
-          pickedDate.year, pickedDate.month, pickedDate.day,
-          pickedTime.hour, pickedTime.minute,
-        );
-
-        // Validation 1: Explicit Past Time Check
-        if (selectedDateTime.isBefore(now)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text("You cannot select a time in the past.",
-                style: TextStyle(fontWeight: FontWeight.w600)),
-              backgroundColor: Colors.red.shade600,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-          return;
-        }
-
-        // Validation 2: 15-Minute Prep Time Check
-        if (selectedDateTime.isBefore(minAllowedTime)) {
-          final minTimeOfDay = TimeOfDay.fromDateTime(minAllowedTime);
-          final formattedMinTime = minTimeOfDay.format(context);
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Please allow at least 15 mins for prep. Earliest time is $formattedMinTime.",
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-              backgroundColor: Colors.red.shade600,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-          return;
-        }
-
-        // Validation 3: Standard Operating Hours Check using DYNAMIC method
-        if (!DateTimeUtils.isWithinDynamicOperatingHours(pickedDate, pickedTime, hoursMap)) {
-          
-          if (!DateTimeUtils.isDayOpen(pickedDate.weekday, hoursMap)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text("Sorry, we are closed on this day.",
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-                backgroundColor: Colors.red.shade600,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 4),
-              ),
-            );
-            return;
-          }
-
-          final dayStr = DateTimeUtils.getDayString(pickedDate.weekday);
-          final dayData = hoursMap?[dayStr];
-          
-          final fallbackOpenStr = pickedDate.weekday == DateTime.monday ? "4:00 PM" : "11:00 AM";
-          final openStr = DateTimeUtils.formatTimeString(dayData?['open'] as String?, fallback: fallbackOpenStr);
-          final closeStr = DateTimeUtils.formatTimeString(dayData?['close'] as String?, fallback: "9:30 PM");
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Please select a time between $openStr and $closeStr.",
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-              backgroundColor: Colors.red.shade600,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-          return;
-        }
-
-        // If all 3 validations pass, schedule the time!
-        final newTime = DateTimeUtils.createNzTime(
-          pickedDate.year, pickedDate.month, pickedDate.day,
-          pickedTime.hour, pickedTime.minute,
-        );
-        onTimeChanged(newTime);
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final hoursMap = RestaurantService.instance.openingHours;
-    final displayTime = scheduledTime ?? DateTimeUtils.getDynamicDefaultPickupTime(hoursMap);
+    final displayTime = scheduledTime ??
+        DateTimeUtils.getDynamicDefaultPickupTime(hoursMap);
 
     return InkWell(
-      onTap: () => _pickDateTime(context),
+      onTap: () => _openPicker(context),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         height: 38,
@@ -177,14 +117,16 @@ class OrderTimeSelector extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300, width: 1),
+          border: Border.all(color: Colors.grey.shade300),
         ),
         child: Row(
           children: [
             Text(
               "Pickup: ${DateTimeUtils.formatDateTime(displayTime)}",
               style: TextStyle(
-                color: scheduledTime == null ? Colors.black87 : Theme.of(context).primaryColor,
+                color: scheduledTime == null
+                    ? Colors.black87
+                    : Theme.of(context).primaryColor,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
               ),
