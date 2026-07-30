@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dacrust.co.nz/sitemap.xml
