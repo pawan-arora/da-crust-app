@@ -176,7 +176,7 @@ class _CartSideSheetState extends State<CartSideSheet> {
               ),
               onPressed: () => Navigator.pop(context),
               child: const Text(
-                "Continue Shopping",
+                "Back to Menu",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ),
