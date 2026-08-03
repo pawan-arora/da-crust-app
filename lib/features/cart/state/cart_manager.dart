@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:da_crust_app/core/utils/date_time_utils.dart';
 import 'package:da_crust_app/data/model/cart_item.dart';
 import 'package:da_crust_app/data/model/menu_item.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +40,16 @@ class CartManager extends ChangeNotifier {
   void updateScheduledTime(DateTime? newTime) {
     scheduledTime = newTime;
     notifyListeners();
+    _saveScheduledTime();
+  }
+
+  Future<void> _saveScheduledTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (scheduledTime == null) {
+      await prefs.remove('scheduled_time');
+    } else {
+      await prefs.setString('scheduled_time', scheduledTime!.toIso8601String());
+    }
   }
 
   // ========== Pending Order ==========
@@ -165,8 +176,26 @@ class CartManager extends ChangeNotifier {
 
     currentOrderId = prefs.getString('pending_order_id');
     orderNote = prefs.getString('order_note') ?? "";
-    // Load customer details
     await _loadCustomerDetails();
+
+    // ── Load & validate scheduled time ──
+    final savedTimeStr = prefs.getString('scheduled_time');
+    if (savedTimeStr != null) {
+      try {
+        final savedTime = DateTime.parse(savedTimeStr);
+        final nzNow = DateTimeUtils.getNzTime();
+
+        if (savedTime.isAfter(nzNow)) {
+          scheduledTime = savedTime;
+        } else {
+          scheduledTime = null;
+          await prefs.remove('scheduled_time');
+        }
+      } catch (e) {
+        debugPrint("Error parsing saved scheduled time: $e");
+        scheduledTime = null;
+      }
+    }
 
     if (savedData != null) {
       try {
@@ -175,6 +204,7 @@ class CartManager extends ChangeNotifier {
             .map((e) => CartItem.fromMap(e as Map<String, dynamic>))
             .toList();
 
+        // 👇 Keep this call – it removes the unused-declaration warning
         if (currentOrderId != null && _items.isNotEmpty) {
           _verifyAbandonedCartStatus();
         }
@@ -212,13 +242,13 @@ class CartManager extends ChangeNotifier {
     scheduledTime = null;
     currentOrderId = null;
 
-    // Note: We intentionally keep customer details
     // so the form is still filled if they order again.
 
     notifyListeners();
     _saveCart();
 
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('scheduled_time');
     await prefs.remove('pending_order_id');
     await prefs.remove('order_note');
   }
