@@ -82,14 +82,18 @@ class _HomeContentState extends State<HomeContent> {
 
     if (searchQuery.isNotEmpty) {
       gridItems = gridItems
-          .where((item) =>
-              item.name.toLowerCase().contains(searchQuery.toLowerCase()))
+          .where(
+            (item) =>
+                item.name.toLowerCase().contains(searchQuery.toLowerCase()),
+          )
           .toList();
 
       for (var entry in widget.grouped.entries) {
         final matches = entry.value
-            .where((item) =>
-                item.name.toLowerCase().contains(searchQuery.toLowerCase()))
+            .where(
+              (item) =>
+                  item.name.toLowerCase().contains(searchQuery.toLowerCase()),
+            )
             .toList();
         if (matches.isNotEmpty) {
           filteredGrouped[entry.key] = matches;
@@ -158,29 +162,17 @@ class _HomeContentState extends State<HomeContent> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Flexible(
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: GestureDetector(
-                              onTap: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) =>
-                                      const RestaurantInfoDialog(),
-                                );
-                              },
-                              child: Text(
-                                RestaurantService.instance.name,
-                                style: TextStyle(
-                                  fontSize: isMobile ? 16 : 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: 0.0,
-                                  height: 1.1,
-                                ),
-                                maxLines: isMobile ? 2 : 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                          child: Text(
+                            RestaurantService.instance.name,
+                            style: TextStyle(
+                              fontSize: isMobile ? 16 : 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.0,
+                              height: 1.1,
                             ),
+                            maxLines: isMobile ? 2 : 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (!isMobile) ...[
@@ -193,7 +185,8 @@ class _HomeContentState extends State<HomeContent> {
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: 8, // Tighter horizontal gap
-                      runSpacing: 4, // Tighter vertical gap to prevent pushing the bounds
+                      runSpacing:
+                          4, // Tighter vertical gap to prevent pushing the bounds
                       children: [
                         const RestaurantStatusWidget(),
                         if (isMobile) const RatingBadge(),
@@ -217,6 +210,39 @@ class _HomeContentState extends State<HomeContent> {
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                     decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // ── View Details button (restaurant info) ──
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) =>
+                                    const RestaurantInfoDialog(),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons
+                                      .storefront_outlined, // ← clearer “about the restaurant” icon
+                                  color: Colors.white70,
+                                  size: 15,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  isMobile ? "Details" : "View Details",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
@@ -331,7 +357,9 @@ class _HomeContentState extends State<HomeContent> {
               child: Column(
                 children: [
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                    ),
                     child: isMobile
                         ? Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -344,8 +372,9 @@ class _HomeContentState extends State<HomeContent> {
                                     scheduledTime:
                                         CartManager.instance.scheduledTime,
                                     onTimeChanged: (newTime) {
-                                      CartManager.instance
-                                          .updateScheduledTime(newTime);
+                                      CartManager.instance.updateScheduledTime(
+                                        newTime,
+                                      );
                                     },
                                   );
                                 },
@@ -464,22 +493,23 @@ class _HomeContentState extends State<HomeContent> {
                               color: Colors.black87,
                               fontSize: 13,
                             ),
-                            items: [
-                              'Relevance',
-                              'Price: Low to High',
-                              'Price: High to Low',
-                            ]
-                                .map(
-                                  (s) => DropdownMenuItem(
-                                    value: s,
-                                    child: Text(
-                                      isMobile
-                                          ? s.replaceFirst('Price: ', '')
-                                          : "Sort By: $s",
-                                    ),
-                                  ),
-                                )
-                                .toList(),
+                            items:
+                                [
+                                      'Relevance',
+                                      'Price: Low to High',
+                                      'Price: High to Low',
+                                    ]
+                                    .map(
+                                      (s) => DropdownMenuItem(
+                                        value: s,
+                                        child: Text(
+                                          isMobile
+                                              ? s.replaceFirst('Price: ', '')
+                                              : "Sort By: $s",
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
                             onChanged: (val) {
                               if (val != null) {
                                 setState(() => currentSort = val);
