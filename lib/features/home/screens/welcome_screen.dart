@@ -5,6 +5,7 @@ import 'package:da_crust_app/features/home/screens/about_screen.dart';
 import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:flutter/material.dart';
 import 'package:da_crust_app/features/home/screens/home_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 bool hasHomeScreenInitialized = false;
 
@@ -92,11 +93,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       return const HomeScreen();
     }
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 0.78).animate(
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 0.50).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
-    final welcomeImage = restaurantData?['welcomeImage'] as String?;
+    //final welcomeImage = restaurantData?['welcomeImage'] as String?;
     final logo = restaurantData?['logo'] as String?;
     final name = restaurantData?['name'] ?? "Da Crust";
     final aboutText = restaurantData?['about'] as String? ?? "";
@@ -109,7 +110,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         fit: StackFit.expand,
         children: [
           // Background
-          Image.asset(AppAssets.pizzaBackground, fit: BoxFit.cover),
+          Image.asset(AppAssets.welcomeBackground_2, fit: BoxFit.cover),
 
           // Dark overlay
           AnimatedBuilder(
@@ -124,167 +125,129 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           SafeArea(
             child: Column(
               children: [
-                const SizedBox(height: 20),
-
-                // ========== TOP SECTION: Logo + Name + Address ==========
-                if (showContent) ...[
-                  // Logo
-                  if (logo != null && logo.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: amberShade.withValues(alpha: 0.7),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: RoundedNetworkImage(
-                        imageUrl: logo,
-                        width: 68,
-                        height: 68,
-                        borderRadius: 50, // makes it perfectly circular
-                        loaderStrokeWidth: 2,
-                        errorWidget: const Icon(
-                          Icons.storefront,
-                          size: 30,
-                          color: Colors.white54,
-                        ),
+                const Spacer(
+                  flex: 2,
+                ), // pushes content down a bit like the image
+                // ========== LOGO ==========
+                if (showContent && logo != null && logo.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFF5E6C8).withValues(alpha: 0.85),
+                        width: 1.5,
                       ),
                     ),
-
-                  const SizedBox(height: 16),
-
-                  // Restaurant Name
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      name,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.amber.shade50,
-                        letterSpacing: 0.2,
-                        height: 1.3,
+                    child: RoundedNetworkImage(
+                      imageUrl: logo,
+                      width: 64,
+                      height: 64,
+                      borderRadius: 50,
+                      loaderStrokeWidth: 2,
+                      errorWidget: const Icon(
+                        Icons.storefront,
+                        size: 28,
+                        color: Colors.white54,
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 8),
+                const SizedBox(height: 18),
 
-                  // Address with icon
-                  if (fullAddress.isNotEmpty)
-                    Row(
+                // ========== TITLE (matches the screenshot font + size) ==========
+                if (showContent)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      // Force the exact two-line look from the image
+                      "Da Crust Pizzeria &\nIndian Restaurant",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 34, // large like the image
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFF5E6C8), // creamy gold
+                        height: 1.15,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 10),
+
+                // ========== ADDRESS ==========
+                if (showContent && fullAddress.isNotEmpty)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 15,
+                        color: const Color(0xFF10B981), // same green
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        fullAddress,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          color: const Color(
+                            0xFFF5E6C8,
+                          ).withValues(alpha: 0.92),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                const Spacer(
+                  flex: 6,
+                ), // big space so buttons sit near the bottom like the image
+                // ========== BUTTONS ==========
+                if (showContent)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 36),
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 16,
-                          color: accentGreen,
+                        // About Us
+                        SizedBox(
+                          width: 140,
+                          child: PillButton(
+                            text: "About Us",
+                            isPrimary: false,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AboutScreen(
+                                    aboutText: aboutText,
+                                    restaurantName: name,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                        const SizedBox(width: 5),
-                        Text(
-                          fullAddress,
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            color: Colors.amber.shade50.withValues(alpha: 0.9),
-                            fontWeight: FontWeight.w500,
+                        const SizedBox(width: 14),
+                        // ORDER NOW
+                        SizedBox(
+                          width: 140,
+                          child: PillButton(
+                            text: "ORDER NOW",
+                            isPrimary: true,
+                            onTap: () {
+                              hasHomeScreenInitialized = true;
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const HomeScreen(),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ],
                     ),
-                ],
-
-                const SizedBox(height: 22),
-
-                // ========== RESTAURANT IMAGE ==========
-                Expanded(
-                  child: AnimatedOpacity(
-                    opacity: showContent ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 700),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: 920, // higher limit, looks good on desktop
-                        ),
-                        child: RoundedNetworkImage(
-                          imageUrl: welcomeImage,
-                          borderRadius: 20,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorWidget: const Icon(
-                            Icons.storefront,
-                            size: 70,
-                            color: Colors.white54,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-                // ========== BUTTONS ==========
-                if (showContent)
-                  Builder(
-                    builder: (context) {
-                      final screenWidth = MediaQuery.of(context).size.width;
-
-                      // 38% of screen width, but never smaller than 130 or larger than 170
-                      final buttonWidth = (screenWidth * 0.38).clamp(
-                        130.0,
-                        170.0,
-                      );
-
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // About Us
-                            SizedBox(
-                              width: buttonWidth,
-                              child: PillButton(
-                                text: "About Us",
-                                isPrimary: false,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => AboutScreen(
-                                        aboutText: aboutText,
-                                        restaurantName: name,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-
-                            const SizedBox(width: 14),
-
-                            // Order Now
-                            SizedBox(
-                              width: buttonWidth,
-                              child: PillButton(
-                                text: "ORDER NOW",
-                                isPrimary: true,
-                                onTap: () {
-                                  hasHomeScreenInitialized = true;
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const HomeScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
                   ),
               ],
             ),
