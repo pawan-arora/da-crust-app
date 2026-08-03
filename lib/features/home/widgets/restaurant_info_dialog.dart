@@ -97,8 +97,6 @@ class _RestaurantInfoDialogState extends State<RestaurantInfoDialog> {
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     final name = _restaurantData!['name'] ?? "Da Crust";
-    final aboutText = _restaurantData!['about'] ?? "Welcome to our restaurant.";
-
     final addressMap =
         _restaurantData!['address'] as Map<String, dynamic>? ?? {};
     final street = addressMap['street'] ?? "";
@@ -174,21 +172,6 @@ class _RestaurantInfoDialogState extends State<RestaurantInfoDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "About Us",
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  aboutText,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(height: 1.5),
-                ),
-                const SizedBox(height: 24),
-                const Divider(),
                 const SizedBox(height: 16),
 
                 _buildInfoRow(
