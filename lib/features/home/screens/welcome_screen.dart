@@ -102,6 +102,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     final name = restaurantData?['name'] ?? "Da Crust";
     final aboutText = restaurantData?['about'] as String? ?? "";
     final fullAddress = _getFullAddress();
+    final isMobile = MediaQuery.sizeOf(context).shortestSide < 600;
     //final screenWidth = MediaQuery.of(context).size.width;
     //final buttonWidth = (screenWidth) / 1.5; // Adjusted for better spacing on smaller screens
 
@@ -110,7 +111,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         fit: StackFit.expand,
         children: [
           // Background
-          Image.asset(AppAssets.welcomeBackground_2, fit: BoxFit.cover),
+          Image.asset(
+            isMobile
+                ? AppAssets.welcomeBackgroundMobile
+                : AppAssets.welcomeBackground,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            alignment: Alignment.center,
+          ),
 
           // Dark overlay
           AnimatedBuilder(
@@ -161,7 +170,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
                       // Force the exact two-line look from the image
-                      "Da Crust Pizzeria &\nIndian Restaurant",
+                      name,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.playfairDisplay(
                         fontSize: 34, // large like the image
