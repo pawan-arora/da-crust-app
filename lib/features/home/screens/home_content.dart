@@ -4,6 +4,7 @@ import 'package:da_crust_app/features/cart/state/cart_manager.dart';
 import 'package:da_crust_app/features/cart/widgets/cart_icon_with_badge.dart';
 import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:da_crust_app/features/home/widgets/bestsellers_section.dart';
+import 'package:da_crust_app/features/home/widgets/category_chips_header.dart';
 import 'package:da_crust_app/features/home/widgets/restaurant_info_dialog.dart';
 import 'package:da_crust_app/features/menu/widgets/category_chips.dart';
 import 'package:da_crust_app/features/menu/widgets/menu_grid.dart';
@@ -65,7 +66,7 @@ class _HomeContentState extends State<HomeContent> {
     // 🌟 THE FIX: We abandon percentage math for the bounding boxes.
     // The wrapping content needs a guaranteed absolute height to never clip!
     final safeToolbarHeight = isMobile ? 135.0 : 105.0;
-    final safeBottomHeight = isMobile ? 175.0 : 135.0;
+    // final safeBottomHeight = isMobile ? 175.0 : 135.0;
     final horizontalPadding = isMobile ? 16.0 : 24.0;
 
     final categories = ["All", ...widget.grouped.keys];
@@ -129,6 +130,12 @@ class _HomeContentState extends State<HomeContent> {
         SliverAppBar(
           floating: true,
           snap: true,
+          pinned: false,
+          elevation: 0, // ← add
+          scrolledUnderElevation: 0, // ← add
+          surfaceTintColor: Colors.transparent, // ← add
+          shadowColor: Colors.transparent, // ← add
+          forceElevated: false,
           // 👇 Using the guaranteed safe height
           toolbarHeight: safeToolbarHeight,
           titleSpacing: isMobile ? 12 : 24,
@@ -144,7 +151,7 @@ class _HomeContentState extends State<HomeContent> {
                     // 👇 Give the logo a tiny push down so it aligns with the title
                     padding: const EdgeInsets.only(top: 4.0),
                     child: Image.asset(
-                      'assets/images/logo.png',
+                      AppAssets.logo,
                       height: isMobile ? 45 : 70,
                       width: isMobile ? 45 : 70,
                       fit: BoxFit.contain,
@@ -349,95 +356,92 @@ class _HomeContentState extends State<HomeContent> {
             ),
           ),
           bottom: PreferredSize(
-            // 👇 Using the guaranteed safe height for the bottom search area
-            preferredSize: Size.fromHeight(safeBottomHeight),
+            preferredSize: Size.fromHeight(
+              isMobile ? 95.0 : 70.0,
+            ), // ← smaller now
             child: Container(
               color: Theme.of(context).scaffoldBackgroundColor,
               width: double.infinity,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                    ),
-                    child: isMobile
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const SizedBox(height: 5),
-                              ListenableBuilder(
-                                listenable: CartManager.instance,
-                                builder: (context, _) {
-                                  return OrderTimeSelector(
-                                    scheduledTime:
-                                        CartManager.instance.scheduledTime,
-                                    onTimeChanged: (newTime) {
-                                      CartManager.instance.updateScheduledTime(
-                                        newTime,
-                                      );
-                                    },
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalPadding,
+                vertical: 8,
+              ),
+              child: isMobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ListenableBuilder(
+                          listenable: CartManager.instance,
+                          builder: (context, _) {
+                            return OrderTimeSelector(
+                              scheduledTime: CartManager.instance.scheduledTime,
+                              onTimeChanged: (newTime) {
+                                CartManager.instance.updateScheduledTime(
+                                  newTime,
+                                );
+                              },
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        CustomSearchBar(
+                          onChanged: (val) {
+                            setState(() {
+                              searchQuery = val;
+                            });
+                          },
+                        ),
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: ListenableBuilder(
+                            listenable: CartManager.instance,
+                            builder: (context, _) {
+                              return OrderTimeSelector(
+                                scheduledTime:
+                                    CartManager.instance.scheduledTime,
+                                onTimeChanged: (newTime) {
+                                  CartManager.instance.updateScheduledTime(
+                                    newTime,
                                   );
                                 },
-                              ),
-                              const SizedBox(height: 8),
-                              CustomSearchBar(
-                                onChanged: (val) {
-                                  setState(() {
-                                    searchQuery = val;
-                                  });
-                                },
-                              ),
-                            ],
-                          )
-                        : Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                flex: 3,
-                                child: ListenableBuilder(
-                                  listenable: CartManager.instance,
-                                  builder: (context, _) {
-                                    return OrderTimeSelector(
-                                      scheduledTime:
-                                          CartManager.instance.scheduledTime,
-                                      onTimeChanged: (newTime) {
-                                        CartManager.instance
-                                            .updateScheduledTime(newTime);
-                                      },
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                flex: 5,
-                                child: CustomSearchBar(
-                                  onChanged: (val) {
-                                    setState(() {
-                                      searchQuery = val;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0, top: 12.0),
-                    child: CategoryChips(
-                      categories: categories,
-                      selected: selectedCategory,
-                      onSelected: (value) {
-                        setState(() {
-                          selectedCategory = value;
-                          currentSort = "Relevance";
-                        });
-                      },
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 5,
+                          child: CustomSearchBar(
+                            onChanged: (val) {
+                              setState(() {
+                                searchQuery = val;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
+          ),
+        ),
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: CategoryChipsHeader(
+            categories: categories,
+            selected: selectedCategory,
+            onSelected: (value) {
+              setState(() {
+                selectedCategory = value;
+                currentSort = "Relevance";
+              });
+            },
+            horizontalPadding: horizontalPadding,
+            isMobile: isMobile,
           ),
         ),
         SliverToBoxAdapter(
