@@ -29,7 +29,8 @@ class _HomeContentState extends State<HomeContent> {
   String selectedCategory = "All";
   String currentSort = "Relevance";
   String searchQuery = "";
-
+  final GlobalKey<CustomSearchBarState> _searchKey =
+      GlobalKey<CustomSearchBarState>();
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -44,6 +45,9 @@ class _HomeContentState extends State<HomeContent> {
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeOutCubic,
     );
+
+    // Clear the search bar
+    _searchKey.currentState?.clear();
 
     setState(() {
       selectedCategory = "All";
@@ -384,6 +388,7 @@ class _HomeContentState extends State<HomeContent> {
                         ),
                         const SizedBox(height: 8),
                         CustomSearchBar(
+                          key: _searchKey,
                           onChanged: (val) {
                             setState(() {
                               searchQuery = val;
@@ -416,6 +421,7 @@ class _HomeContentState extends State<HomeContent> {
                         Expanded(
                           flex: 5,
                           child: CustomSearchBar(
+                            key: _searchKey,
                             onChanged: (val) {
                               setState(() {
                                 searchQuery = val;
