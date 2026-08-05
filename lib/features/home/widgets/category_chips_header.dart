@@ -41,10 +41,10 @@ class CategoryChipsHeader extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  double get maxExtent => isMobile ? 64.0 : 76;
+  double get maxExtent => isMobile ? 70 : 76;
 
   @override
-  double get minExtent => isMobile ? 64.0 : 76;
+  double get minExtent => isMobile ? 70 : 76;
 
   @override
   bool shouldRebuild(covariant CategoryChipsHeader oldDelegate) {

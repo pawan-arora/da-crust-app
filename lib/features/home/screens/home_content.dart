@@ -6,7 +6,6 @@ import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:da_crust_app/features/home/widgets/bestsellers_section.dart';
 import 'package:da_crust_app/features/home/widgets/category_chips_header.dart';
 import 'package:da_crust_app/features/home/widgets/restaurant_info_dialog.dart';
-import 'package:da_crust_app/features/menu/widgets/category_chips.dart';
 import 'package:da_crust_app/features/menu/widgets/menu_grid.dart';
 import 'package:da_crust_app/features/menu/widgets/menu_section.dart';
 import 'package:da_crust_app/features/ratings/screens/add_review_dialog.dart';
