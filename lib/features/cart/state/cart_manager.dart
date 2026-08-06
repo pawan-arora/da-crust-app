@@ -25,12 +25,11 @@ class CartManager extends ChangeNotifier {
 
   int get totalItemCount =>
       _items.fold(0, (sums, item) => sums + item.quantity);
-  double get totalCartPrice =>
-      _items.fold(0, (sums, item) => sums + item.totalPrice);
 
-  CartManager._internal() {
-    //_loadCart();
-  }
+  double get totalCartPrice =>
+      _items.fold(0.0, (sums, item) => sums + item.totalPrice);
+
+  CartManager._internal();
 
   Future<void> initialize() async {
     await _loadCart();
@@ -53,10 +52,20 @@ class CartManager extends ChangeNotifier {
   }
 
   // ========== Pending Order ==========
+  /// Call this as soon as a new order document is created.
   Future<void> setPendingOrderId(String orderId) async {
     currentOrderId = orderId;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('pending_order_id', orderId);
+    notifyListeners();
+  }
+
+  /// Clear only the pending order (keep cart items & customer details).
+  Future<void> clearPendingOrderId() async {
+    currentOrderId = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('pending_order_id');
+    notifyListeners();
   }
 
   // ========== Add Item ==========
@@ -164,21 +173,18 @@ class CartManager extends ChangeNotifier {
   // ========== Save / Load Cart ==========
   Future<void> _saveCart() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encodedData = jsonEncode(
-      _items.map((e) => e.toMap()).toList(),
-    );
+    final encodedData = jsonEncode(_items.map((e) => e.toMap()).toList());
     await prefs.setString('saved_cart', encodedData);
   }
 
   Future<void> _loadCart() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedData = prefs.getString('saved_cart');
 
     currentOrderId = prefs.getString('pending_order_id');
     orderNote = prefs.getString('order_note') ?? "";
     await _loadCustomerDetails();
 
-    // ── Load & validate scheduled time ──
+    // Load & validate scheduled time
     final savedTimeStr = prefs.getString('scheduled_time');
     if (savedTimeStr != null) {
       try {
@@ -197,6 +203,7 @@ class CartManager extends ChangeNotifier {
       }
     }
 
+    final savedData = prefs.getString('saved_cart');
     if (savedData != null) {
       try {
         final List<dynamic> decodedData = jsonDecode(savedData);
@@ -204,7 +211,6 @@ class CartManager extends ChangeNotifier {
             .map((e) => CartItem.fromMap(e as Map<String, dynamic>))
             .toList();
 
-        // 👇 Keep this call – it removes the unused-declaration warning
         if (currentOrderId != null && _items.isNotEmpty) {
           _verifyAbandonedCartStatus();
         }
@@ -217,35 +223,40 @@ class CartManager extends ChangeNotifier {
   }
 
   Future<void> _verifyAbandonedCartStatus() async {
+    if (currentOrderId == null) return;
+
     try {
       final doc = await FirebaseFirestore.instance
           .collection('orders')
           .doc(currentOrderId)
           .get();
 
-      if (doc.exists) {
-        final status = doc.data()?['status'];
-        if (status == 'PAID') {
-          debugPrint("✅ Background order was paid. Clearing cart.");
-          clearCart();
-        }
+      if (!doc.exists) {
+        // Order was deleted or never created properly
+        await clearPendingOrderId();
+        return;
       }
+
+      final status = doc.data()?['status'];
+      if (status == 'PAID') {
+        debugPrint("✅ Background order was paid. Clearing cart.");
+        clearCart();
+      }
+      // If status is still PENDING / CREATED → keep the same orderId
     } catch (e) {
       debugPrint("Error verifying background cart status: $e");
     }
   }
 
   // ========== Clear Cart ==========
-  void clearCart() async {
+  Future<void> clearCart() async {
     _items.clear();
     orderNote = "";
     scheduledTime = null;
     currentOrderId = null;
 
-    // so the form is still filled if they order again.
-
     notifyListeners();
-    _saveCart();
+    await _saveCart();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('scheduled_time');

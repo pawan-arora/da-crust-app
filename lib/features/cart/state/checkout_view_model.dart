@@ -22,15 +22,15 @@ class CheckoutViewModel extends ChangeNotifier {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
 
-  bool wantsSms = true;
+  bool wantsSms = false;
 
   CheckoutViewModel()
-      : noteController = TextEditingController(
-          text: CartManager.instance.orderNote,
-        ) {
+    : noteController = TextEditingController(
+        text: CartManager.instance.orderNote,
+      ) {
     _prefillCustomerDetails();
     _loadLocationData();
-
+    currentOrderId = CartManager.instance.currentOrderId;
     // Listen to cart changes
     CartManager.instance.addListener(notifyListeners);
 
@@ -39,6 +39,11 @@ class CheckoutViewModel extends ChangeNotifier {
     lastNameController.addListener(_saveCustomerDetails);
     emailController.addListener(_saveCustomerDetails);
     phoneController.addListener(_saveCustomerDetails);
+    noteController.addListener(_saveOrderNote);
+  }
+
+  void _saveOrderNote() {
+    CartManager.instance.updateOrderNote(noteController.text);
   }
 
   /// Prefill form from CartManager (survives browser refresh)
@@ -71,6 +76,7 @@ class CheckoutViewModel extends ChangeNotifier {
     lastNameController.removeListener(_saveCustomerDetails);
     emailController.removeListener(_saveCustomerDetails);
     phoneController.removeListener(_saveCustomerDetails);
+    noteController.removeListener(_saveOrderNote); // ← add this
 
     noteController.dispose();
     firstNameController.dispose();
@@ -90,7 +96,6 @@ class CheckoutViewModel extends ChangeNotifier {
     final data = await RestaurantService.instance.fetchRestaurantData();
     if (data != null) {
       restaurantName = data['name'] ?? "Da Crust Pizzeria & Indian Takeaways";
-      wantsSms = data['wantsSms'] ?? true; // Default to true if not specified
       final addressMap = data['address'] as Map<String, dynamic>? ?? {};
       final street = addressMap['street'] ?? "20 Diana Street";
       final city = addressMap['city'] ?? "Lumsden";
