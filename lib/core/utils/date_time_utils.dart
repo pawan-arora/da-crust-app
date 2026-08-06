@@ -16,8 +16,10 @@ class DateTimeUtils {
     Map<String, dynamic>? hoursMap,
     tz.TZDateTime minAllowedTime,
   ) {
-    final minutes =
-        DateTimeUtils.getDynamicOperatingMinutes(date.weekday, hoursMap);
+    final minutes = DateTimeUtils.getDynamicOperatingMinutes(
+      date.weekday,
+      hoursMap,
+    );
     final openMinutes = minutes['open']!;
     final closeMinutes = minutes['close']!;
     final lastAllowed = closeMinutes - 15;
@@ -31,10 +33,15 @@ class DateTimeUtils {
       final hour = current ~/ 60;
       final minute = current % 60;
       final slotDt = DateTimeUtils.createNzTime(
-        date.year, date.month, date.day, hour, minute,
+        date.year,
+        date.month,
+        date.day,
+        hour,
+        minute,
       );
 
-      final isToday = date.year == minAllowedTime.year &&
+      final isToday =
+          date.year == minAllowedTime.year &&
           date.month == minAllowedTime.month &&
           date.day == minAllowedTime.day;
 
@@ -48,6 +55,7 @@ class DateTimeUtils {
     }
     return slots;
   }
+
   // --- 2. Helper to create a pure NZ Date Object ---
   static tz.TZDateTime createNzTime(
     int year,
@@ -309,59 +317,41 @@ class DateTimeUtils {
     return {'open': openMins, 'close': closeMins};
   }
 
-  /// Scans up to 7 days ahead to find the very next time the store is open
+  /// Next valid pickup slot from restaurant hours.
+  /// Always snaps to a real 15-minute slot from [generateTimeSlots].
+  /// Skips closed days and days with no remaining slots.
   static tz.TZDateTime getDynamicDefaultPickupTime(
     Map<String, dynamic>? hoursMap,
   ) {
     final nzNow = getNzTime();
+    final minAllowedTime = nzNow.add(const Duration(minutes: 15));
 
-    // Check up to 7 days forward to find an open day
-    for (int offset = 0; offset < 7; offset++) {
-      final checkDate = nzNow.add(Duration(days: offset));
-      final isTodayInLoop = (offset == 0);
+    // Start from today (NZ calendar date)
+    var cursor = tz.TZDateTime(_nz, nzNow.year, nzNow.month, nzNow.day);
 
-      if (isDayOpen(checkDate.weekday, hoursMap)) {
-        final opMinutes = getDynamicOperatingMinutes(
-          checkDate.weekday,
-          hoursMap,
-        );
-        final openTotalMinutes = opMinutes['open']!;
-        final closeTotalMinutes = opMinutes['close']!;
+    // Walk forward until we find a day that is open and has slots left
+    for (int i = 0; i < 14; i++) {
+      if (isDayOpen(cursor.weekday, hoursMap)) {
+        final slots = generateTimeSlots(cursor, hoursMap, minAllowedTime);
 
-        if (isTodayInLoop) {
-          final currentTotalMinutes = nzNow.hour * 60 + nzNow.minute;
-
-          if (currentTotalMinutes >= closeTotalMinutes) {
-            // Store closed for today, let the loop move to tomorrow
-            continue;
-          } else if (currentTotalMinutes < openTotalMinutes) {
-            // Early morning, store opens later today
-            return createNzTime(
-              checkDate.year,
-              checkDate.month,
-              checkDate.day,
-              openTotalMinutes ~/ 60,
-              openTotalMinutes % 60,
-            );
-          } else {
-            // Open right now!
-            return nzNow.add(const Duration(minutes: 15));
-          }
-        } else {
-          // This is a future day. Return its exact opening time.
+        if (slots.isNotEmpty) {
+          final first = slots.first;
           return createNzTime(
-            checkDate.year,
-            checkDate.month,
-            checkDate.day,
-            openTotalMinutes ~/ 60,
-            openTotalMinutes % 60,
+            cursor.year,
+            cursor.month,
+            cursor.day,
+            first.hour,
+            first.minute,
           );
         }
       }
+
+      // Closed day or no slots left → try next calendar day
+      cursor = cursor.add(const Duration(days: 1));
     }
 
-    // Absolute fallback if map is fully empty/corrupt
-    return nzNow.add(const Duration(minutes: 15));
+    // Absolute fallback (should rarely happen)
+    return minAllowedTime;
   }
 
   static bool isWithinDynamicOperatingHours(
