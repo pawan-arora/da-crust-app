@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -56,13 +55,6 @@ class PaymentHandler {
   }
 
   static Future<void> _redirectToPayment(String checkoutUrl, String errorMessage) async {
-    try {
-      // Stop network traffic and release the WebChannel
-      await FirebaseFirestore.instance.terminate();
-    } catch (e) {
-      debugPrint('Firestore terminate error: $e');
-    }
-
     final Uri uri = Uri.parse(checkoutUrl);
 
     if (!await launchUrl(uri, webOnlyWindowName: '_self')) {
