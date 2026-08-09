@@ -131,8 +131,8 @@ class _HomeContentState extends State<HomeContent> {
       controller: _scrollController,
       slivers: [
         SliverAppBar(
-          floating: true,
-          snap: true,
+          floating: false,
+          snap: false,
           pinned: false,
           elevation: 0, // ← add
           scrolledUnderElevation: 0, // ← add
