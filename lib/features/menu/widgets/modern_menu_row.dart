@@ -12,17 +12,20 @@ class ModernMenuRow extends StatelessWidget {
   Widget build(BuildContext context) {
     // 🌟 1. Grab screen width to dynamically size the cards
     final isMobile = MediaQuery.of(context).size.width < 600;
-    
+
     // 🌟 2. If mobile, shrink the width to 180 to perfectly match the GridView math!
     final double cardWidth = isMobile ? 180.0 : 220.0;
 
     return ModernCarousel(
-      height: 420,
-      scrollAmount: 500, 
+      height: isMobile ? 340 : 420,
+      scrollAmount: 500,
       items: items.map((item) {
-        return SizedBox(
-          width: cardWidth, // 👇 Use the dynamic width
-          child: MenuCard(item: item),
+        return Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: cardWidth, // 👇 Use the dynamic width
+            child: MenuCard(item: item),
+          ),
         );
       }).toList(),
     );

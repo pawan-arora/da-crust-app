@@ -71,31 +71,37 @@ class _ModernCarouselState extends State<ModernCarousel> {
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) return SizedBox(height: widget.height);
 
-    return SizedBox(
-      height: widget.height,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          ShaderMask(
-            shaderCallback: (Rect bounds) {
-              return const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [Colors.white, Colors.transparent, Colors.transparent, Colors.white],
-                stops: [0.0, 0.02, 0.98, 1.0],
-              ).createShader(bounds);
-            },
-            blendMode: BlendMode.dstOut,
-            child: ListView.separated(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: widget.items.length,
-              separatorBuilder: (_, _) => SizedBox(width: widget.separatorWidth),
-              itemBuilder: (context, index) => widget.items[index],
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        ShaderMask(
+          shaderCallback: (Rect bounds) {
+            return const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [Colors.white, Colors.transparent, Colors.transparent, Colors.white],
+              stops: [0.0, 0.02, 0.98, 1.0],
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.dstOut,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < widget.items.length; i++) ...[
+                    if (i > 0) SizedBox(width: widget.separatorWidth),
+                    widget.items[i],
+                  ],
+                ],
+              ),
             ),
           ),
+        ),
           
           if (_showLeftButton)
             Positioned(
@@ -103,13 +109,12 @@ class _ModernCarouselState extends State<ModernCarousel> {
               child: NavButton(icon: Icons.chevron_left, onTap: () => _scroll(-1)),
             ),
             
-          if (_showRightButton && widget.items.length > 2) 
+          if (_showRightButton && widget.items.length > 2)
             Positioned(
               right: 4,
               child: NavButton(icon: Icons.chevron_right, onTap: () => _scroll(1)),
             ),
-        ],
-      ),
+      ],
     );
   }
 }

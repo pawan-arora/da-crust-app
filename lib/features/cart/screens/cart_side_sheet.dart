@@ -187,7 +187,9 @@ class _CartSideSheetState extends State<CartSideSheet> {
   }
 
   Widget _buildCartList(BuildContext context, List<CartItem> items) {
-   final time = CartManager.instance.scheduledTime ?? DateTimeUtils.getDefaultPickupTime();
+    final hoursMap = RestaurantService.instance.openingHours;
+    final time = CartManager.instance.scheduledTime ??
+        DateTimeUtils.getDynamicDefaultPickupTime(hoursMap);
     final displayTime = DateTimeUtils.formatDateTime(time);
 
     return ListView(
