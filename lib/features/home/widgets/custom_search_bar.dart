@@ -21,12 +21,18 @@ class CustomSearchBarState extends State<CustomSearchBar> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue);
+    _controller.addListener(_handleTextChanged);
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_handleTextChanged);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _handleTextChanged() {
+    setState(() {});
   }
 
   void clear() {
@@ -66,6 +72,16 @@ class CustomSearchBarState extends State<CustomSearchBar> {
                     color: Colors.grey,
                     size: 20,
                   ),
+                  suffixIcon: _controller.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.grey,
+                            size: 18,
+                          ),
+                          onPressed: clear,
+                        )
+                      : null,
                   counterText: "",
                 ),
               ),
