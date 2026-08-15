@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-class SafeMenuImage extends StatelessWidget {
+class SafeMenuImage extends StatefulWidget {
   final String imagePath; // This now expects the full https:// URL from Firestore
   final double height;
   final double width;
@@ -9,33 +9,68 @@ class SafeMenuImage extends StatelessWidget {
     super.key,
     required this.imagePath,
     this.height = 140,
-    this.width = double.infinity
+    this.width = double.infinity,
   });
+
+  @override
+  State<SafeMenuImage> createState() => _SafeMenuImageState();
+}
+
+class _SafeMenuImageState extends State<SafeMenuImage> {
+  // Some valid images (e.g. JPEGs with certain embedded ICC color profiles)
+  // fail Flutter Web's own byte decoder with ImageCodecException even though
+  // the file is intact — the browser can display them fine. When
+  // CachedNetworkImage's decode fails, we fall back to rendering via the
+  // browser's native <img> element instead of endlessly retrying the same
+  // decode that will just fail again.
+  bool _useHtmlFallback = false;
+
+  @override
+  void didUpdateWidget(covariant SafeMenuImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imagePath != widget.imagePath) {
+      _useHtmlFallback = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     // Safety check: Make sure we actually have a valid HTTP URL
-    if (imagePath.isEmpty || !imagePath.startsWith('http')) {
-      return _fallback(
-        reason: "Invalid or empty URL", 
-        error: null, 
-        url: imagePath,
+    if (widget.imagePath.isEmpty || !widget.imagePath.startsWith('http')) {
+      return _fallback(reason: "Invalid or empty URL", error: null);
+    }
+
+    if (_useHtmlFallback) {
+      return Image.network(
+        widget.imagePath,
+        height: widget.height,
+        width: widget.width,
+        fit: BoxFit.cover,
+        webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+        loadingBuilder: (_, child, progress) =>
+            progress == null ? child : _loading(),
+        errorBuilder: (_, error, _) =>
+            _fallback(reason: "Image.network (HTML) error", error: error),
       );
     }
 
     return CachedNetworkImage(
-      imageUrl: imagePath,
-      height: height,
-      width: width,
+      imageUrl: widget.imagePath,
+      height: widget.height,
+      width: widget.width,
       fit: BoxFit.cover,
-      
+
       placeholder: (_, _) => _loading(),
-      
-      errorWidget: (_, _, error) => _fallback(
-        reason: "CachedNetworkImage error",
-        error: error,
-        url: imagePath,
-      ),
+
+      errorWidget: (_, _, error) {
+        debugPrint("❌ Image Load Failed (CachedNetworkImage)");
+        debugPrint("🌐 URL: ${widget.imagePath}");
+        debugPrint("🔥 Error: $error");
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _useHtmlFallback = true);
+        });
+        return _loading();
+      },
     );
   }
 
@@ -44,7 +79,7 @@ class SafeMenuImage extends StatelessWidget {
   /// -------------------------
   Widget _loading() {
     return Container(
-      height: height,
+      height: widget.height,
       color: Colors.grey.shade200,
       child: const Center(
         child: CircularProgressIndicator(),
@@ -55,18 +90,14 @@ class SafeMenuImage extends StatelessWidget {
   /// -------------------------
   /// FALLBACK + LOGGING
   /// -------------------------
-  Widget _fallback({
-    required String reason,
-    required dynamic error,
-    required String? url,
-  }) {
+  Widget _fallback({required String reason, required dynamic error}) {
     debugPrint("❌ Image Load Failed");
-    debugPrint("🌐 URL: $url");
+    debugPrint("🌐 URL: ${widget.imagePath}");
     debugPrint("⚠️ Reason: $reason");
     if (error != null) debugPrint("🔥 Error: $error");
 
     return Container(
-      height: height,
+      height: widget.height,
       color: Colors.grey.shade200,
       child: const Center(
         child: Icon(Icons.fastfood, size: 50, color: Colors.grey),
