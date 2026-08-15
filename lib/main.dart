@@ -34,7 +34,15 @@ void main() async {
   await AppConfig.instance.init();
 
   await CartManager.instance.initialize();
-  
+
+  // Menu images are decoded at their on-screen size (see SafeMenuImage's
+  // memCacheWidth/memCacheHeight), so each cached frame is small — but cap
+  // the total resident count too as a backstop against unbounded growth
+  // while scrolling long menus, which was pressuring CanvasKit's GPU
+  // texture cache on web and causing "texImage2D: no image" repaint errors.
+  PaintingBinding.instance.imageCache.maximumSize = 200;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 50 << 20; // 50 MB
+
   // Run the App
   runApp(const MyApp());
 }
