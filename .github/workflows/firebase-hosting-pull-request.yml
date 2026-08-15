@@ -15,10 +15,13 @@ jobs:
       - uses: actions/checkout@v4
       
       # 🌟 ADDED: Install Flutter on the GitHub server
+      # 🌟 Pinned to match the version used for local development/testing
+      # and the production deploy workflow — see firebase-hosting-merge.yml
+      # for why floating on channel: 'stable' was a problem.
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          flutter-version: '3.41.6'
 
       - name: Create config file
         run: |

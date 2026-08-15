@@ -13,10 +13,16 @@ jobs:
       - uses: actions/checkout@v4
       
       # 🌟 ADDED: Install Flutter on the GitHub server
+      # 🌟 Pinned to the exact version used for local development/testing.
+      # This was previously floating on channel: 'stable', which silently
+      # installed whatever Flutter release was newest at build time — that
+      # meant production could be running a different engine/CanvasKit
+      # build than what was ever tested locally, with no way to notice.
+      # Bump this deliberately (and re-test) when you want to upgrade.
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          flutter-version: '3.41.6'
           
       - name: Create config file
         run: |
