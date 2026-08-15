@@ -530,17 +530,26 @@ class _HomeContentState extends State<HomeContent> {
                     ],
                   ),
                 ),
-              selectedCategory == "All"
-                  ? MenuSection(
-                      grouped: filteredGrouped,
-                      onCategoryTap: (categoryName) {
-                        setState(() {
-                          selectedCategory = categoryName;
-                          currentSort = "Relevance";
-                        });
-                      },
-                    )
-                  : MenuGrid(items: gridItems),
+              // 🌟 The "All" view is kept mounted (Visibility with
+              // maintainState) rather than swapped in/out, so its already
+              // -decoded images survive switching to a category and back
+              // instead of being disposed and redecoded from scratch every
+              // time. MenuGrid is left to rebuild normally on category
+              // switches since its item list changes anyway.
+              Visibility(
+                visible: selectedCategory == "All",
+                maintainState: true,
+                child: MenuSection(
+                  grouped: filteredGrouped,
+                  onCategoryTap: (categoryName) {
+                    setState(() {
+                      selectedCategory = categoryName;
+                      currentSort = "Relevance";
+                    });
+                  },
+                ),
+              ),
+              if (selectedCategory != "All") MenuGrid(items: gridItems),
               const SizedBox(height: 40),
               if (selectedCategory == "All" && searchQuery.isEmpty)
                 const RestaurantFooter(),
