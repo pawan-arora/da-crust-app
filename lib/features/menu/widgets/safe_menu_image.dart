@@ -54,11 +54,25 @@ class _SafeMenuImageState extends State<SafeMenuImage> {
       );
     }
 
+    // Decode at roughly the on-screen size (scaled for device pixel ratio)
+    // instead of the source resolution. Menu photos are uploaded at full
+    // camera resolution but only ever shown at a few hundred logical
+    // pixels, so decoding full-size wastes GPU texture memory across a
+    // whole grid of cards — that memory pressure is what makes CanvasKit
+    // evict "live" image textures and then fail to redraw them.
+    final dpr = MediaQuery.of(context).devicePixelRatio;
+    final cacheHeight = (widget.height * dpr).round();
+    final cacheWidth = widget.width.isFinite
+        ? (widget.width * dpr).round()
+        : null;
+
     return CachedNetworkImage(
       imageUrl: widget.imagePath,
       height: widget.height,
       width: widget.width,
       fit: BoxFit.cover,
+      memCacheHeight: cacheHeight,
+      memCacheWidth: cacheWidth,
 
       placeholder: (_, _) => _loading(),
 
