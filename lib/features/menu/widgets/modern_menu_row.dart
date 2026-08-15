@@ -21,10 +21,11 @@ class ModernMenuRow extends StatelessWidget {
       scrollAmount: 500,
       items: items.map((item) {
         return Align(
+          key: ValueKey(item.menuId),
           alignment: Alignment.topCenter,
           child: SizedBox(
             width: cardWidth, // 👇 Use the dynamic width
-            child: MenuCard(item: item),
+            child: MenuCard(key: ValueKey(item.menuId), item: item),
           ),
         );
       }).toList(),
