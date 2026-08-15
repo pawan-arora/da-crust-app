@@ -23,7 +23,8 @@ class MenuSection extends StatelessWidget {
         if (entry.value.isEmpty) return const SizedBox.shrink();
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 24.0), 
+          key: ValueKey(entry.key),
+          padding: const EdgeInsets.only(bottom: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -52,10 +53,10 @@ class MenuSection extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               // --- THE MODERN CAROUSEL ---
-              ModernMenuRow(items: entry.value),
-              
+              ModernMenuRow(key: ValueKey(entry.key), items: entry.value),
+
             ],
           ),
         );

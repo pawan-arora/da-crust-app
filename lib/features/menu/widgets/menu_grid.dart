@@ -68,7 +68,10 @@ class MenuGrid extends StatelessWidget {
                       if (j > 0) const SizedBox(width: spacing),
                       SizedBox(
                         width: cardWidth,
-                        child: MenuCard(item: rowItems[j]),
+                        child: MenuCard(
+                          key: ValueKey(rowItems[j].menuId),
+                          item: rowItems[j],
+                        ),
                       ),
                     ],
                   ],
