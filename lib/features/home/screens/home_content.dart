@@ -534,8 +534,7 @@ class _HomeContentState extends State<HomeContent> {
               // maintainState) rather than swapped in/out, so its already
               // -decoded images survive switching to a category and back
               // instead of being disposed and redecoded from scratch every
-              // time. MenuGrid is left to rebuild normally on category
-              // switches since its item list changes anyway.
+              // time.
               Visibility(
                 visible: selectedCategory == "All",
                 maintainState: true,
@@ -549,7 +548,20 @@ class _HomeContentState extends State<HomeContent> {
                   },
                 ),
               ),
-              if (selectedCategory != "All") MenuGrid(items: gridItems),
+            ],
+          ),
+        ),
+        // 🌟 Built as real slivers (not a plain Column) so only the rows
+        // near the viewport are built and decode their images — building
+        // every card eagerly caused a burst of simultaneous image decodes
+        // on fast scroll, which is what was triggering ImageCodecException
+        // on Flutter Web.
+        if (selectedCategory != "All")
+          ...MenuGrid.buildSlivers(context, items: gridItems),
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               const SizedBox(height: 40),
               if (selectedCategory == "All" && searchQuery.isEmpty)
                 const RestaurantFooter(),
