@@ -3,6 +3,7 @@ import 'package:da_crust_app/app_config.dart';
 import 'package:da_crust_app/core/routes/app_router.dart';
 import 'package:da_crust_app/core/theme/app_theme.dart';
 import 'package:da_crust_app/features/cart/state/cart_manager.dart';
+import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -32,6 +33,13 @@ void main() async {
 
   // Fetch the Store Settings from Firestore
   await AppConfig.instance.init();
+
+  // Fetch open/closed status up front so it's available synchronously to
+  // the router — deep links straight to routes like '/checkout' never build
+  // WelcomeScreen (the only other place this used to get fetched), so
+  // without this the closed-store gate below would always see stale
+  // "open" defaults on a fresh page load.
+  await RestaurantService.instance.init();
 
   await CartManager.instance.initialize();
 

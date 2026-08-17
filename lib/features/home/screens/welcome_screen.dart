@@ -2,6 +2,7 @@ import 'package:da_crust_app/core/constants/app_assets.dart';
 import 'package:da_crust_app/core/widgets/pill_button.dart';
 import 'package:da_crust_app/core/widgets/rounded_network_image.dart';
 import 'package:da_crust_app/features/home/screens/about_screen.dart';
+import 'package:da_crust_app/features/home/screens/restaurant_closed_screen.dart';
 import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:flutter/material.dart';
 import 'package:da_crust_app/features/home/screens/home_screen.dart';
@@ -21,6 +22,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Map<String, dynamic>? restaurantData;
   bool isDataLoading = true;
   bool showContent = false;
+  bool isRestaurantClosed = false;
 
   final Color accentGreen = const Color(0xFF10B981);
   //final Color allGold = const Color(0xFFD4A373);
@@ -45,6 +47,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       restaurantData = RestaurantService.instance.cachedData;
       isDataLoading = false;
       showContent = true;
+      isRestaurantClosed = RestaurantService.instance.isRestaurantClosed;
     }
   }
 
@@ -65,6 +68,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         restaurantData = data;
         isDataLoading = false;
         showContent = true;
+        isRestaurantClosed = RestaurantService.instance.isRestaurantClosed;
         _fadeController.value = 0.78;
       });
     }
@@ -90,7 +94,25 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   Widget build(BuildContext context) {
     if (hasHomeScreenInitialized) {
+      // Re-check on every rebuild rather than trusting the stale
+      // `isRestaurantClosed` field above — this flag stays true for the
+      // rest of the session once any non-root route has been visited, so
+      // without a fresh check here a store that closes mid-session would
+      // keep showing HomeScreen to anyone who navigates back to '/'.
+      if (RestaurantService.instance.isRestaurantClosed) {
+        return RestaurantClosedScreen(
+          restaurantData: RestaurantService.instance.cachedData,
+          nextOpeningDate: RestaurantService.instance.nextOpeningDate,
+        );
+      }
       return const HomeScreen();
+    }
+
+    if (showContent && isRestaurantClosed) {
+      return RestaurantClosedScreen(
+        restaurantData: restaurantData,
+        nextOpeningDate: RestaurantService.instance.nextOpeningDate,
+      );
     }
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 0.50).animate(

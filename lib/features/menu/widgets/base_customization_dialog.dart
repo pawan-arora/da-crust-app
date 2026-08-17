@@ -39,7 +39,7 @@ class BaseCustomizationDialog extends StatelessWidget {
                   Positioned(
                     top: 12, right: 12,
                     child: CircleAvatar(
-                      backgroundColor: Colors.black.withOpacity(0.5),
+                      backgroundColor: Colors.black.withValues(alpha: 0.5),
                       radius: 16,
                       child: IconButton(
                         padding: EdgeInsets.zero,

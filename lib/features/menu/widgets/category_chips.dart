@@ -44,7 +44,7 @@ class CategoryChips extends StatelessWidget {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: Colors.deepOrange.withOpacity(0.4),
+                            color: Colors.deepOrange.withValues(alpha: 0.4),
                             blurRadius: 8,
                             offset: const Offset(0, 4), // Pushes the shadow down slightly
                           )

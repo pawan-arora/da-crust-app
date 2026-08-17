@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:da_crust_app/features/cart/screens/checkout_screen.dart';
+import 'package:da_crust_app/features/home/screens/restaurant_closed_screen.dart';
 import 'package:da_crust_app/features/home/screens/welcome_screen.dart';
+import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:flutter/material.dart';
 
 import 'package:da_crust_app/features/payments/screens/order_success_screen.dart';
@@ -33,6 +35,12 @@ class AppRouter {
         return _buildHomeRoute(settings);
 
       case '/checkout':
+        // 🌟 Deep-linking straight to '/checkout' (or coming back to it after
+        // the store closes mid-session) must not bypass the closed-store
+        // gate that WelcomeScreen normally enforces for in-app navigation.
+        if (RestaurantService.instance.isRestaurantClosed) {
+          return _buildClosedRoute(settings);
+        }
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => const CheckoutScreen(),
@@ -68,7 +76,17 @@ class AppRouter {
   static Route<dynamic> _buildHomeRoute(RouteSettings settings) {
     return MaterialPageRoute(
       settings: settings,
-      builder: (context) => const WelcomeScreen(), 
+      builder: (context) => const WelcomeScreen(),
+    );
+  }
+
+  static Route<dynamic> _buildClosedRoute(RouteSettings settings) {
+    return MaterialPageRoute(
+      settings: RouteSettings(name: '/'),
+      builder: (_) => RestaurantClosedScreen(
+        restaurantData: RestaurantService.instance.cachedData,
+        nextOpeningDate: RestaurantService.instance.nextOpeningDate,
+      ),
     );
   }
 }

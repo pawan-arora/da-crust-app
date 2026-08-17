@@ -6,6 +6,10 @@ class DateTimeUtils {
   // 🌟 The Single Source of Truth for New Zealand Time
   static tz.Location get _nz => tz.getLocation('Pacific/Auckland');
 
+  // Public access to the NZ location, for callers that need to build their
+  // own TZDateTime (e.g. converting a Firestore Timestamp).
+  static tz.Location get nzLocation => _nz;
+
   // --- 1. Get Exact New Zealand Time ---
   static tz.TZDateTime getNzTime() {
     return tz.TZDateTime.now(_nz);
@@ -286,8 +290,9 @@ class DateTimeUtils {
 
   /// Checks if the day exists in the database map. Missing means closed.
   static bool isDayOpen(int weekday, Map<String, dynamic>? hoursMap) {
-    if (hoursMap == null || hoursMap.isEmpty)
+    if (hoursMap == null || hoursMap.isEmpty) {
       return true; // Fallback if DB fetch fails
+    }
     final dayStr = getDayString(weekday);
     return hoursMap.containsKey(dayStr);
   }
@@ -382,5 +387,66 @@ class DateTimeUtils {
     final ampm = h >= 12 ? "PM" : "AM";
     final hr12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
     return "$hr12:$m $ampm";
+  }
+
+  // --- 9. Restaurant Closed / Reopen Helpers ---
+  static const List<String> _weekdayLabels = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  static const List<String> _monthLabels = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  /// e.g. "Monday, 25 Aug at 11:00 AM", using the date's own fields
+  /// (pass an NZ TZDateTime in so no further conversion happens here).
+  static String formatOpeningDate(DateTime date) {
+    final weekday = _weekdayLabels[date.weekday - 1];
+    final month = _monthLabels[date.month - 1];
+    final hour = date.hour == 0
+        ? 12
+        : (date.hour > 12 ? date.hour - 12 : date.hour);
+    final ampm = date.hour >= 12 ? 'PM' : 'AM';
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$weekday, ${date.day} $month at $hour:$minute $ampm';
+  }
+
+  /// True once NZ "now" has reached or passed [target].
+  static bool hasNzTimeReached(tz.TZDateTime target) {
+    return !getNzTime().isBefore(target);
+  }
+
+  static const List<String> _monthLabelsFull = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  static String _ordinal(int day) {
+    if (day >= 11 && day <= 13) return '${day}th';
+    switch (day % 10) {
+      case 1:
+        return '${day}st';
+      case 2:
+        return '${day}nd';
+      case 3:
+        return '${day}rd';
+      default:
+        return '${day}th';
+    }
+  }
+
+  /// e.g. "Thursday, 17th September" — weekday, ordinal day, full month,
+  /// no time. Pairs with a live countdown that already conveys the time.
+  static String formatOpeningDateChip(DateTime date) {
+    final weekday = _weekdayLabels[date.weekday - 1];
+    final month = _monthLabelsFull[date.month - 1];
+    return '$weekday, ${_ordinal(date.day)} $month';
   }
 }
