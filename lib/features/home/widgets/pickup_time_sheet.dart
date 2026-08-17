@@ -159,7 +159,7 @@ class _PickupTimeSheetState extends State<PickupTimeSheet> {
                     controller: _dateScrollController,
                     scrollDirection: Axis.horizontal,
                     itemCount: widget.availableDates.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
                       final date = widget.availableDates[index];
                       final isSelected = date.year == selectedDate.year &&
@@ -172,7 +172,7 @@ class _PickupTimeSheetState extends State<PickupTimeSheet> {
                           width: 62,
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? primary.withOpacity(0.1)
+                                ? primary.withValues(alpha: 0.1)
                                 : Colors.white,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
@@ -224,7 +224,7 @@ class _PickupTimeSheetState extends State<PickupTimeSheet> {
                   shrinkWrap: true,
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   itemCount: currentSlots.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (_, _) =>
                       Divider(height: 1, color: Colors.grey.shade100),
                   itemBuilder: (context, index) {
                     final slot = currentSlots[index];

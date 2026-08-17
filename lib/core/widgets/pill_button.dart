@@ -24,11 +24,11 @@ class PillButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(30),
           splashColor: isPrimary
-              ? Colors.white.withOpacity(0.25)
-              : Colors.deepOrange.withOpacity(0.15),
+              ? Colors.white.withValues(alpha: 0.25)
+              : Colors.deepOrange.withValues(alpha: 0.15),
           highlightColor: isPrimary
-              ? Colors.white.withOpacity(0.1)
-              : Colors.deepOrange.withOpacity(0.08),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.deepOrange.withValues(alpha: 0.08),
           child: Ink(
             height: height,
             decoration: BoxDecoration(
@@ -41,7 +41,7 @@ class PillButton extends StatelessWidget {
               boxShadow: isPrimary
                   ? [
                       BoxShadow(
-                        color: Colors.deepOrange.withOpacity(0.4),
+                        color: Colors.deepOrange.withValues(alpha: 0.4),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       )

@@ -27,7 +27,7 @@ class AppTheme {
       color: Colors.white,
       surfaceTintColor: Colors.white, 
       elevation: 2, 
-      shadowColor: Colors.black.withOpacity(0.06), 
+      shadowColor: Colors.black.withValues(alpha: 0.06), 
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: Colors.grey.shade200, width: 1),
