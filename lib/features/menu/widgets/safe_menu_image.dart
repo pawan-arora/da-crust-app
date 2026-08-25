@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 class SafeMenuImage extends StatefulWidget {
@@ -40,7 +41,22 @@ class _SafeMenuImageState extends State<SafeMenuImage> {
       return _fallback(reason: "Invalid or empty URL", error: null);
     }
 
-    if (_useHtmlFallback) {
+    // On web this is the primary path, not a fallback.
+    //
+    // CanvasKit decodes photos through WebCodecs into a VideoFrame and wraps
+    // it in a *lazy* SkImage (MakeLazyImageFromTextureSourceWithInfo), which
+    // re-uploads that texture from the VideoFrame on every repaint after Skia
+    // evicts it from the GPU cache. A VideoFrame is a scarce browser resource
+    // the engine itself documents as closable "any time" — and once it's gone
+    // the re-upload gets nothing, logging
+    // "WebGL: INVALID_VALUE: texImage2D: no image" and painting the card
+    // blank. It shows up randomly because it's a race between Skia evicting
+    // the texture and the browser reclaiming the frame, so it bites hardest
+    // on long grids under fast scrolling.
+    //
+    // Rendering through a real <img> leaves the pixels with the browser and
+    // never involves a CanvasKit texture upload, sidestepping the race.
+    if (kIsWeb || _useHtmlFallback) {
       return Image.network(
         widget.imagePath,
         height: widget.height,
@@ -54,12 +70,13 @@ class _SafeMenuImageState extends State<SafeMenuImage> {
       );
     }
 
-    // Decode at roughly the on-screen size (scaled for device pixel ratio)
-    // instead of the source resolution. Menu photos are uploaded at full
-    // camera resolution but only ever shown at a few hundred logical
-    // pixels, so decoding full-size wastes GPU texture memory across a
-    // whole grid of cards — that memory pressure is what makes CanvasKit
-    // evict "live" image textures and then fail to redraw them.
+    // Mobile only from here down: decode at roughly the on-screen size
+    // (scaled for device pixel ratio) instead of the source resolution. Menu
+    // photos are uploaded at full camera resolution but only ever shown at a
+    // few hundred logical pixels, so decoding full-size wastes texture memory
+    // across a whole grid of cards. This is also where CachedNetworkImage's
+    // disk cache earns its keep, which the web <img> path gets from the
+    // browser's own HTTP cache instead.
     final dpr = MediaQuery.of(context).devicePixelRatio;
     final cacheHeight = (widget.height * dpr).round();
     final cacheWidth = widget.width.isFinite
