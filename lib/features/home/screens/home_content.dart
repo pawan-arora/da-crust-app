@@ -39,6 +39,36 @@ class _HomeContentState extends State<HomeContent> {
     super.dispose();
   }
 
+  // The SliverAppBar isn't pinned, so it scrolls away entirely — its full
+  // extent is the toolbar plus the search/time row underneath it. Kept as
+  // helpers so the scroll target can't drift away from the sliver's own
+  // heights in build().
+  double _appBarHeight(bool isMobile) => isMobile ? 135.0 : 105.0;
+  double _appBarBottomHeight(bool isMobile) => isMobile ? 95.0 : 70.0;
+
+  /// Scrolls so the pinned category chips sit at the top of the viewport,
+  /// putting the first item of the newly selected category directly below
+  /// them. Switching category otherwise leaves you at whatever offset you
+  /// were already at, stranded partway down a list you've never seen.
+  void _scrollToCategoryStart() {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final target = _appBarHeight(isMobile) + _appBarBottomHeight(isMobile);
+
+    // Wait a frame: the new category's slivers have to be laid out before
+    // maxScrollExtent reflects the list we're scrolling into.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (!position.hasContentDimensions) return;
+
+      _scrollController.animateTo(
+        target.clamp(0.0, position.maxScrollExtent),
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
   void _resetToHome() {
     _scrollController.animateTo(
       0.0,
@@ -68,7 +98,7 @@ class _HomeContentState extends State<HomeContent> {
 
     // 🌟 THE FIX: We abandon percentage math for the bounding boxes.
     // The wrapping content needs a guaranteed absolute height to never clip!
-    final safeToolbarHeight = isMobile ? 135.0 : 105.0;
+    final safeToolbarHeight = _appBarHeight(isMobile);
     // final safeBottomHeight = isMobile ? 175.0 : 135.0;
     final horizontalPadding = isMobile ? 16.0 : 24.0;
 
@@ -360,7 +390,7 @@ class _HomeContentState extends State<HomeContent> {
           ),
           bottom: PreferredSize(
             preferredSize: Size.fromHeight(
-              isMobile ? 95.0 : 70.0,
+              _appBarBottomHeight(isMobile),
             ), // ← smaller now
             child: Container(
               color: Theme.of(context).scaffoldBackgroundColor,
@@ -444,6 +474,7 @@ class _HomeContentState extends State<HomeContent> {
                 selectedCategory = value;
                 currentSort = "Relevance";
               });
+              _scrollToCategoryStart();
             },
             horizontalPadding: horizontalPadding,
             isMobile: isMobile,
@@ -545,6 +576,7 @@ class _HomeContentState extends State<HomeContent> {
                       selectedCategory = categoryName;
                       currentSort = "Relevance";
                     });
+                    _scrollToCategoryStart();
                   },
                 ),
               ),
