@@ -1,4 +1,5 @@
 import 'package:da_crust_app/features/cart/state/cart_manager.dart';
+import 'package:da_crust_app/features/cart/widgets/edit_cart_item_dialog.dart';
 import 'package:da_crust_app/features/menu/widgets/item_quantity_stepper.dart';
 import 'package:da_crust_app/features/menu/widgets/safe_menu_image.dart';
 import 'package:da_crust_app/features/payments/services/payment_handler.dart';
@@ -127,6 +128,24 @@ class PaymentSummaryColumn extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
+                            if (EditCartItemDialog.canEdit(cartItem))
+                              InkWell(
+                                onTap: isProcessing
+                                    ? null
+                                    : () => EditCartItemDialog.show(
+                                          context,
+                                          cartItem,
+                                        ),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Icon(
+                                    Icons.edit_outlined,
+                                    size: 20,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ),
                             InkWell(
                               onTap: () =>
                                   CartManager.instance.removeItem(cartItem),
