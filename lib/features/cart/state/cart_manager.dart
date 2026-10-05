@@ -77,15 +77,7 @@ class CartManager extends ChangeNotifier {
           i.selectedSpice == spice,
     );
 
-    double snapshotPrice = item.price ?? 0.0;
-
-    if (size != null && item.sizes.isNotEmpty) {
-      final sizeObj = item.sizes.firstWhere(
-        (s) => s.name == size,
-        orElse: () => item.sizes.first,
-      );
-      snapshotPrice = sizeObj.price;
-    }
+    final snapshotPrice = _unitPriceFor(item, size);
 
     if (existingIndex >= 0) {
       _items[existingIndex].quantity += quantity;
@@ -98,6 +90,63 @@ class CartManager extends ChangeNotifier {
           selectedSpice: spice,
           unitPriceAtAddition: snapshotPrice,
         ),
+      );
+    }
+
+    notifyListeners();
+    _saveCart();
+  }
+
+  double _unitPriceFor(MenuItem item, String? size) {
+    if (size != null && item.sizes.isNotEmpty) {
+      final sizeObj = item.sizes.firstWhere(
+        (s) => s.name == size,
+        orElse: () => item.sizes.first,
+      );
+      return sizeObj.price;
+    }
+    return item.price ?? 0.0;
+  }
+
+  // ========== Edit Item ==========
+  /// Replaces the size/spice/quantity of an existing cart line, keeping its
+  /// position. If another line already has the new combination, the two are
+  /// merged so the cart never holds duplicate lines.
+  void updateCartItem(
+    CartItem cartItem, {
+    String? size,
+    String? spice,
+    required int quantity,
+  }) {
+    final index = _items.indexOf(cartItem);
+    if (index < 0) return;
+
+    if (quantity <= 0) {
+      removeItem(cartItem);
+      return;
+    }
+
+    final duplicateIndex = _items.indexWhere(
+      (i) =>
+          !identical(i, cartItem) &&
+          i.item.menuId == cartItem.item.menuId &&
+          i.selectedSize == size &&
+          i.selectedSpice == spice,
+    );
+
+    if (duplicateIndex >= 0) {
+      _items[duplicateIndex].quantity += quantity;
+      _items.removeAt(index);
+    } else {
+      _items[index] = CartItem(
+        item: cartItem.item,
+        quantity: quantity,
+        selectedSize: size,
+        selectedSpice: spice,
+        // Keep the original snapshot unless the size (and so the price) changed.
+        unitPriceAtAddition: size == cartItem.selectedSize
+            ? cartItem.unitPriceAtAddition
+            : _unitPriceFor(cartItem.item, size),
       );
     }
 
