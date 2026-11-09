@@ -1,3 +1,4 @@
+import 'package:da_crust_app/core/utils/date_time_utils.dart';
 import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:da_crust_app/features/home/widgets/payment_methods_row.dart';
 import 'package:flutter/material.dart';
@@ -41,28 +42,6 @@ class _RestaurantFooterState extends State<RestaurantFooter> {
     }
   }
 
-  String _formatTimeRange(Map<String, dynamic>? dayData) {
-    if (dayData == null || dayData['open'] == null || dayData['close'] == null) {
-      return "Closed";
-    }
-
-    String formatTime(String time) {
-      final parts = time.split(':');
-      if (parts.length != 2) return time;
-      
-      int hour = int.tryParse(parts[0]) ?? 0;
-      final minute = parts[1];
-      final ampm = hour >= 12 ? 'PM' : 'AM';
-      
-      hour = hour % 12;
-      if (hour == 0) hour = 12; 
-      
-      return '$hour:$minute $ampm';
-    }
-
-    return '${formatTime(dayData['open'])} – ${formatTime(dayData['close'])}';
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -88,9 +67,9 @@ class _RestaurantFooterState extends State<RestaurantFooter> {
     final contactMap = _restaurantData!['contact'] as Map<String, dynamic>? ?? {};
     final phone = contactMap['phone'] ?? "";
 
-    final hoursMap = _restaurantData!['openingHourse'] as Map<String, dynamic>? ?? {};
-    final monHours = _formatTimeRange(hoursMap['monday']);
-    final tueSunHours = _formatTimeRange(hoursMap['tuesday']);
+    final hoursText = DateTimeUtils.groupOpeningHours(
+      _restaurantData!['openingHourse'] as Map<String, dynamic>?,
+    ).map((row) => '${row.days}: ${row.hours}').join('  |  ');
 
     return Container(
       width: double.infinity,
@@ -133,8 +112,10 @@ class _RestaurantFooterState extends State<RestaurantFooter> {
           _buildCompactRow(context, Icons.location_on, "$street, $city"),
           const SizedBox(height: 12),
           
-          _buildCompactRow(context, Icons.access_time, "Mon: $monHours  |  Tue–Sun: $tueSunHours"),
-          const SizedBox(height: 12),
+          if (hoursText.isNotEmpty) ...[
+            _buildCompactRow(context, Icons.access_time, hoursText),
+            const SizedBox(height: 12),
+          ],
           
           if (phone.isNotEmpty)
             _buildCompactRow(context, Icons.phone, phone),
