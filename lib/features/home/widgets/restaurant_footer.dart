@@ -1,4 +1,5 @@
 import 'package:da_crust_app/features/home/services/restaurant_service.dart';
+import 'package:da_crust_app/features/home/widgets/payment_methods_row.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -137,6 +138,9 @@ class _RestaurantFooterState extends State<RestaurantFooter> {
           
           if (phone.isNotEmpty)
             _buildCompactRow(context, Icons.phone, phone),
+
+          const SizedBox(height: 24),
+          const PaymentMethodsRow(),
         ],
       ),
     );
