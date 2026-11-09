@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========== HELPER ==========
+    function isAdmin() {
+      return request.auth != null;
+      // Later you can make it stricter:
+      // return request.auth != null && request.auth.token.email == "your-admin@email.com";
+    }
+
+    // 1. Default: Lock everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. PUBLIC READ-ONLY (Customer App)
+    match /categories/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /config/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /menu/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /restaurant/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // Anonymous customers may only perform the scheduled auto-reopen
+    // (RestaurantService._autoReopenIfDue): closed -> open, no other field
+    // touched, and only once nextOpeningDate has passed on the server clock.
+    match /restaurant/{docId} {
+      allow update: if resource.data.isRestaurantClosed == true
+        && resource.data.nextOpeningDate is timestamp
+        && resource.data.nextOpeningDate <= request.time
+        && request.resource.data.isRestaurantClosed == false
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['isRestaurantClosed']);
+    }
+
+    // 3. ORDERS
+    match /orders/{document=**} {
+      allow create: if true;                    // Customers can place orders
+      allow get: if true;
+      allow update: if true;
+      // allow update: if resource.data.status in ['PENDING', 'PENDING_EFTPOS']
+      //            && request.resource.data.status in ['PENDING', 'PENDING_EFTPOS'];
+      allow list, delete: if isAdmin();
+    }
+
+    // 4. REVIEWS
+    match /reviews/{document=**} {
+      allow read, create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // 5. COMMUNICATIONS
+    match /sms_messages/{document=**} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+    match /mail/{document=**} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 6. Any other collections the admin needs
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
