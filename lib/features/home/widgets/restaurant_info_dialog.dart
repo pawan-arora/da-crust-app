@@ -1,4 +1,5 @@
 import 'package:da_crust_app/core/constants/app_assets.dart';
+import 'package:da_crust_app/core/utils/date_time_utils.dart';
 import 'package:da_crust_app/features/home/services/restaurant_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -38,30 +39,6 @@ class _RestaurantInfoDialogState extends State<RestaurantInfoDialog> {
     if (!await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication)) {
       debugPrint('Could not launch Google Maps');
     }
-  }
-
-  String _formatTimeRange(Map<String, dynamic>? dayData) {
-    if (dayData == null ||
-        dayData['open'] == null ||
-        dayData['close'] == null) {
-      return "Closed";
-    }
-
-    String formatTime(String time) {
-      final parts = time.split(':');
-      if (parts.length != 2) return time;
-
-      int hour = int.tryParse(parts[0]) ?? 0;
-      final minute = parts[1];
-      final ampm = hour >= 12 ? 'PM' : 'AM';
-
-      hour = hour % 12;
-      if (hour == 0) hour = 12;
-
-      return '$hour:$minute $ampm';
-    }
-
-    return '${formatTime(dayData['open'])} – ${formatTime(dayData['close'])}';
   }
 
   @override
@@ -109,8 +86,9 @@ class _RestaurantInfoDialogState extends State<RestaurantInfoDialog> {
         _restaurantData!['contact'] as Map<String, dynamic>? ?? {};
     final phone = contactMap['phone'] ?? "";
 
-    final hoursMap =
-        _restaurantData!['openingHourse'] as Map<String, dynamic>? ?? {};
+    final hoursRows = DateTimeUtils.groupOpeningHours(
+      _restaurantData!['openingHourse'] as Map<String, dynamic>?,
+    );
 
     return SingleChildScrollView(
       child: Column(
@@ -239,35 +217,32 @@ class _RestaurantInfoDialogState extends State<RestaurantInfoDialog> {
 
                 const SizedBox(height: 24),
 
-                Text(
-                  "Opening Hours",
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                if (hoursRows.isNotEmpty) ...[
+                  Text(
+                    "Opening Hours",
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      children: [
+                        for (final (index, row) in hoursRows.indexed) ...[
+                          if (index > 0) const Divider(height: 16),
+                          _buildHoursRow(row.days, row.hours),
+                        ],
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      _buildHoursRow(
-                        "Monday",
-                        _formatTimeRange(hoursMap['monday']),
-                      ),
-                      const Divider(height: 16),
-                      _buildHoursRow(
-                        "Tuesday - Sunday",
-                        _formatTimeRange(hoursMap['tuesday']),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
+                ],
 
                 SizedBox(
                   width: double.infinity,

@@ -389,6 +389,45 @@ class DateTimeUtils {
     return "$hr12:$m $ampm";
   }
 
+  /// Collapses the weekly hours map into display rows, merging consecutive
+  /// days that share the same hours. A day that is missing, or has no usable
+  /// open/close time, shows as "Closed". Returns no rows if there is no hours
+  /// data at all.
+  static List<({String days, String hours})> groupOpeningHours(
+    Map<String, dynamic>? hoursMap,
+  ) {
+    if (hoursMap == null || hoursMap.isEmpty) return const [];
+
+    final hours = _weekdaysMap.map((day) {
+      final dayData = hoursMap[day] as Map<String, dynamic>?;
+      final open = formatTimeString(dayData?['open'] as String?, fallback: '');
+      final close = formatTimeString(
+        dayData?['close'] as String?,
+        fallback: '',
+      );
+      return open.isEmpty || close.isEmpty ? 'Closed' : '$open – $close';
+    }).toList();
+
+    final rows = <({String days, String hours})>[];
+    var start = 0;
+    for (var i = 1; i <= hours.length; i++) {
+      if (i < hours.length && hours[i] == hours[start]) continue;
+
+      final last = i - 1;
+      final String days;
+      if (start == 0 && last == hours.length - 1) {
+        days = 'Every day';
+      } else if (start == last) {
+        days = _weekdayLabels[start];
+      } else {
+        days = '${_weekdayLabels[start]} - ${_weekdayLabels[last]}';
+      }
+      rows.add((days: days, hours: hours[start]));
+      start = i;
+    }
+    return rows;
+  }
+
   // --- 9. Restaurant Closed / Reopen Helpers ---
   static const List<String> _weekdayLabels = [
     'Monday',
