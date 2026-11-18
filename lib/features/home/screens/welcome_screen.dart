@@ -51,6 +51,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     }
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Warm the home screen's header images while the user is still on the
+    // welcome screen, so the logo and background are decoded before "Order
+    // Now" is tapped (matters most with a cold cache, e.g. incognito).
+    precacheImage(const AssetImage(AppAssets.logo), context);
+    precacheImage(const AssetImage(AppAssets.pizzaBackground), context);
+  }
+
   Future<void> _startSequence() async {
     final dataFuture = RestaurantService.instance.fetchRestaurantData();
 
